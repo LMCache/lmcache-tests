@@ -1,0 +1,4 @@
+#model_name: "mistralai/Mistral-7B-Instruct-v0.2"
+model_name: "THUDM/glm-4-9b-chat"
+gpu_util: 0.5
+tensor_parallelism: 1
