@@ -4,4 +4,4 @@ remote_url: "lm://localhost:65432"
 remote_serde: "cachegen"
 
 # Whether retrieve() is pipelined or not
-pipelined_backend: False
+pipelined_backend: True

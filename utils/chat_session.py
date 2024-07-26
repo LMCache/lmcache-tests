@@ -53,7 +53,7 @@ class ChatSession:
             model=self.model,
             temperature=temperature,
             stream=False,
-            max_tokens=1,
+            max_tokens=max_tokens,
         )
         
         server_message = chat_completion.choices[0].message.content

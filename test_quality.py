@@ -31,7 +31,7 @@ def test(query, num_gen, temperature, max_tokens):
         # Fill the cache
         session2.chat("What's the document about?")
         print(f"\033Cache is being stored to remote. Waiting...\033[0m")
-        time.sleep(300)
+        time.sleep(35)
         
         start = time.perf_counter()
         message2 = session2.chat("What's the document about?")

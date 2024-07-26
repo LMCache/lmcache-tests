@@ -25,11 +25,12 @@ def start_vllm(
     model_name = vllm_config.get("model_name", "mistralai/Mistral-7B-Instruct-v0.2")
     gpu_util = vllm_config.get("gpu_util", 0.5)
     tensor_parallelism = vllm_config.get("tensor_parallelism", 1)
-    
+    max_model_len = vllm_config.get("max_model_len", 32768)
     cmd = f"python3 -m vllm.entrypoints.openai.api_server \
         --model {model_name} \
         --port {port} \
-        --gpu-memory-utilization {gpu_util} "
+        --gpu-memory-utilization {gpu_util} \
+        --max-model-len {max_model_len} "
     if enable_cache:
         cmd += f"--lmcache-config-file {lmcache_config_path} "
     if tensor_parallelism > 1:

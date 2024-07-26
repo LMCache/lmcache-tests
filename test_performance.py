@@ -21,7 +21,7 @@ def test():
     
     # Fill the cache
     session2.chat("What's the document about?")
-    time.sleep(300)
+    time.sleep(30)
     
     start = time.perf_counter()
     message2 = session2.chat("What's the document about?")
