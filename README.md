@@ -1,6 +1,9 @@
 # lmcache-tests
+## Quick installation (LMCache, lmcache-vllm, lmcache-server, vllm)
+### Run `bash one_install.sh` under your desired directory 
+
 ## Running the tests
-### Step 1: config lmcache and vllm under `configs/`
+### Step 1 (optional): config lmcache and vllm under `configs/`
 
 ### Step 2: setup cache server and vllm nodes
 ```
@@ -8,9 +11,12 @@ python setup.py --node all
 ```
 
 ### Step 3: Run tests
+In a different terminal:
 ```
 python test_performance.py
 ```
+The above test reproduces TTFT (full computation) vs. TTFT (loading cache from remote cpu).
+
 ## Benchmark results
 ### E2E results (TTFT)
 | Model  | Context Length |Hardware settings | Original | Original w store| Local CPU| Remote CPU | Remote CPU (Pipelined)|

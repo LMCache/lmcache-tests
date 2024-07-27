@@ -2,6 +2,8 @@ from multiprocessing import Process
 import argparse
 import subprocess
 import time
+import os
+import signal
 from utils.setup import start_vllm, start_shared_storage
 
 parser = argparse.ArgumentParser(description='setup')
@@ -56,12 +58,12 @@ elif node in ['all', 'all_local']:
         sync=False,
         cuda_debug=cuda_debug)
     processes = [proc_storage, proc_vllm, proc_vllm_optimized]
-    '''
+    
+    # TODO(Jiayi): need a way to shutdown more gracefully
     try:
         while True:
-            time.sleep(1000)
+            time.sleep(10000)
     except KeyboardInterrupt:
         print("killing processes")
-        for process in processes:
-            process.kill()
-    '''
+        for p in processes:
+            os.killpg(os.getpgid(p.pid), signal.SIGTERM)

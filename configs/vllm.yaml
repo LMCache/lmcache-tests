@@ -1,5 +1,5 @@
-#model_name: "mistralai/Mistral-7B-Instruct-v0.2"
-model_name: "THUDM/glm-4-9b-chat"
+model_name: "mistralai/Mistral-7B-Instruct-v0.2"
+#model_name: "THUDM/glm-4-9b-chat"
 max_model_len: 32768 #glm4 supports 128k which may crash vllm
 gpu_util: 0.6
 tensor_parallelism: 1
