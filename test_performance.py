@@ -21,7 +21,12 @@ def test():
     
     # Fill the cache
     session2.chat("What's the document about?")
-    time.sleep(30)
+    print("Cache is being filled...")
+    time.sleep(15)
+    
+    # TODO(Jiayi): might need to move te warm up into vllm
+    # Warm up for prefix-caching kernel
+    session2.chat("What's the document about?")
     
     start = time.perf_counter()
     message2 = session2.chat("What's the document about?")

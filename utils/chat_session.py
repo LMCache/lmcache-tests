@@ -44,7 +44,10 @@ class ChatSession:
     def on_server_message(self, message):
         self.messages.append({"role": "assistant", "content": message})
 
-    def chat(self, text, max_tokens=1, temperature=0):
+    def off_message(self):
+        self.messages = self.messages[:-1]
+    
+    def chat(self, text, max_tokens=1, temperature=0, transient=True):
         self.on_user_message(text)
 
 
@@ -56,6 +59,9 @@ class ChatSession:
             max_tokens=max_tokens,
         )
         
+        if transient:
+            self.off_message()
+            
         server_message = chat_completion.choices[0].message.content
         return server_message
 
