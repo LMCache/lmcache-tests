@@ -5,3 +5,6 @@ __pycache__/
 
 # temporary generation
 temp_results/
+
+# vim temporary files
+.*.sw*
