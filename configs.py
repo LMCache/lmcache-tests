@@ -51,6 +51,8 @@ class LMCacheConfig(Config):
     # Path to the lmcache configuration
     config_path: str
 
+    remote_device: Optional[str] = None
+
     def cmdargs(self) -> str:
         return f"--lmcache-config-file {self.config_path}" if self.config_path is not None else ""
 

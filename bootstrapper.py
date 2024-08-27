@@ -83,11 +83,17 @@ class LocalLMCacheServerBootstrapper(Bootstrapper):
     """
     Bootstraps a local lmcache server
     """
-    def __init__(self, config: Bootstrapper, log_dir = "/tmp"):
+    def __init__(self, config: BootstrapConfig, log_dir = "/tmp"):
         super().__init__(config)
         server_config = self.parse_lmcache_server_config(self.config.lmcache_config.config_path)
         self.handle = None
         self.started = False
+
+        match config.lmcache_config.remote_device:
+            case None:
+                self.remote_device = "cpu"
+            case path:
+                self.remote_device = path
 
         if server_config is None:
             self.is_needed = False
@@ -126,7 +132,7 @@ class LocalLMCacheServerBootstrapper(Bootstrapper):
         if not self.is_needed:
             return
 
-        cmd = f"python3 -um lmcache_server.server {self.host} {self.port}"
+        cmd = f"python3 -um lmcache_server.server {self.host} {self.port} {self.remote_device}"
         self.handle = run_command(cmd, self.stdout_log, self.stderr_log, detach=True)
         self.started = True
 
@@ -136,9 +142,10 @@ class LocalLMCacheServerBootstrapper(Bootstrapper):
             return True
 
         if not self.is_healthy():
+            logger.error("LMCacheServer is dead!")
             return False
 
-        self._monitor_file_output([self.stdout_log, self.stderr_log], "Server started at", timeout=timeout)
+        return self._monitor_file_output([self.stdout_log, self.stderr_log], "Server started at", timeout=timeout)
 
         return True
 
@@ -185,6 +192,17 @@ class LMCacheServerManager:
 
         return cls._instances[instance_id]
 
+    @classmethod
+    def close_servers(cls):
+        """
+        Close and remove all the active lmcache servers
+        """
+        for instance_id, instance in cls._instances.items():
+            instance.close()
+        cls._instances = {}
+        cls._engine_types = {}
+
+
                         
 class LocalVllmBootstrapper(Bootstrapper):
     """
@@ -200,11 +218,12 @@ class LocalVllmBootstrapper(Bootstrapper):
         self.lmcache_server_handler = LMCacheServerManager.get_or_create(config)
 
     def get_cmdline(self) -> str:
-        return f"python3 -m vllm.entrypoints.openai.api_server {self.config.vllm_config.cmdargs()} {self.config.vllm_optional_config.cmdargs()} {self.config.lmcache_config.cmdargs()}"
+        extra_args = "--trust-remote-code"
+        return f"python3 -m vllm.entrypoints.openai.api_server {self.config.vllm_config.cmdargs()} {self.config.vllm_optional_config.cmdargs()} {self.config.lmcache_config.cmdargs()} {extra_args}"
 
     def start(self):
         self.lmcache_server_handler.start()
-        self.lmcache_server_handler.wait_until_ready(timeout = 5)
+        self.lmcache_server_handler.wait_until_ready(timeout = 10)
 
         self.handle = run_command(
                 self.command, 
@@ -214,6 +233,7 @@ class LocalVllmBootstrapper(Bootstrapper):
     def wait_until_ready(self, timeout = 60) -> bool:
         # Try reading the log file to see if the server is ready
         if not self.is_healthy():
+            logger.error(f"VLLM or lmcache server is dead!")
             return False
 
         if not os.path.exists(self.stdout_log):
@@ -224,6 +244,7 @@ class LocalVllmBootstrapper(Bootstrapper):
 
     def is_healthy(self) -> bool:
         if not self.lmcache_server_handler.is_healthy():
+            logger.warn(f"LMCache Server is dead during vLLM's check!")
             return False 
 
         if self.handle is not None:

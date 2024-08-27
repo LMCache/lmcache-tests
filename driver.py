@@ -7,7 +7,7 @@ import openai
 
 from configs import BootstrapConfig, WorkloadConfig, Usecase
 from test_cases import TestCase
-from bootstrapper import CreateBootstrapper, Bootstrapper
+from bootstrapper import CreateBootstrapper, Bootstrapper, LMCacheServerManager
 from workload import CreateWorkloadGenerator, Request
 from utils import read_gpu_memory
 
@@ -106,27 +106,32 @@ def execute_openai_request(request: Request, model: str, client: openai.Client) 
     #time.sleep(t)
     #return t, t
 
-    chat_completion = client.chat.completions.create(
-            messages = messages,
-            model = model,
-            temperature = 0,
-            stream = True,
-        )
+    
+    try:
+        chat_completion = client.chat.completions.create(
+                messages = messages,
+                model = model,
+                temperature = 0,
+                stream = True,
+            )
 
+        start_time = time.perf_counter()
+        first_token_time = None
+        ntokens = 0
+        for chunk in chat_completion:
+            chunk_message = chunk.choices[0].delta.content
+            if chunk_message is not None:
+                if first_token_time is None:
+                    first_token_time = time.perf_counter()
+                ntokens += 1
+        end_time = time.perf_counter()
 
-    start_time = time.perf_counter()
-    first_token_time = None
-    ntokens = 0
-    for chunk in chat_completion:
-        chunk_message = chunk.choices[0].delta.content
-        if chunk_message is not None:
-            if first_token_time is None:
-                first_token_time = time.perf_counter()
-            ntokens += 1
-    end_time = time.perf_counter()
+        ttft = first_token_time - start_time
+        throughput = ntokens / (end_time - first_token_time)
+    except Exception as e:
+        logger.error(f"OpenAI request failed: {e}")
+        return -1, -1
 
-    ttft = first_token_time - start_time
-    throughput = ntokens / (end_time - first_token_time)
     return ttft, throughput
 
 
@@ -151,6 +156,9 @@ def run_experiment(
         logger.info("Cleanning up the engine processes")
         for bootstrapper in bootstrappers:
             bootstrapper.close()
+        LMCacheServerManager.close_servers()
+
+    logger.info(f"Running experiment: {workload_config.desc()} {usecase}")
 
     # Create the workloads
     workload_generators = [CreateWorkloadGenerator(workload_config, usecase) for _ in engine_configs]
@@ -165,7 +173,7 @@ def run_experiment(
     try:
         # Wait for the engines to be ready
         for bootstrapper in bootstrappers:
-            ready = bootstrapper.wait_until_ready(timeout = 120)
+            ready = bootstrapper.wait_until_ready(timeout = 180)
             if not ready:
                 logger.error(f"Engine {bootstrapper} is not ready")
                 cleanup(bootstrappers)
@@ -180,7 +188,7 @@ def run_experiment(
         executor.schedule_requests(workloads, clients, models)
         results = executor.execute_all()
 
-        print(results)
+        #print(results)
 
         # Read GPU memory utilization
         gpu_usage = read_gpu_memory()
