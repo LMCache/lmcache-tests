@@ -1,4 +1,5 @@
 from typing import List, Tuple
+import pandas as pd
 import time
 import multiprocessing
 from dataclasses import dataclass
@@ -128,7 +129,10 @@ def execute_openai_request(request: Request, model: str, client: openai.Client) 
     return ttft, throughput
 
 
-def run_experiment(workload_config: WorkloadConfig, usecase: Usecase, engine_configs: List[BootstrapConfig]):
+def run_experiment(
+        workload_config: WorkloadConfig, 
+        usecase: Usecase, 
+        engine_configs: List[BootstrapConfig]) -> List[ExperimentResult]:
     """
     Run a single experiment: 
     - Bootstrap the serving bootstrappers
@@ -158,7 +162,7 @@ def run_experiment(workload_config: WorkloadConfig, usecase: Usecase, engine_con
 
     # Wait for the engines to be ready
     for bootstrapper in bootstrappers:
-        ready = bootstrapper.wait_until_ready()
+        ready = bootstrapper.wait_until_ready(timeout = 120)
         if not ready:
             logger.error(f"Engine {bootstrapper} is not ready")
             cleanup(bootstrappers)
@@ -182,10 +186,18 @@ def run_experiment(workload_config: WorkloadConfig, usecase: Usecase, engine_con
     cleanup(bootstrappers)
     return results
 
-def run_test_case(case: TestCase):
-    """
-    """
-    pass
+def run_test_case(case: TestCase) -> pd.DataFrame:
+    dfs = []
+    for workload_cfg, usecase in case.experiments:
+        results = run_experiment(workload_cfg, usecase, case.engines)
+        if results is None:
+            logger.error(f"Experiment failed: {workload_cfg.desc()} {usecase}")
+            continue
+        dataframe = pd.DataFrame([item.__dict__ for item in results])
+        dataframe = dataframe.sort_values(by=["timestamp", "engine_id", "request_id"])
+        dataframe["workload"] = workload_cfg.desc()
+        dfs.append(dataframe)
+    return pd.concat(dfs)
 
 if __name__ == "__main__":
     # test the request executor
@@ -217,8 +229,8 @@ if __name__ == "__main__":
         engine_type = EngineType.LOCAL,
         vllm_config = vllm_config1,
         vllm_optional_config = VLLMOptionalConfig(),
-        #lmcache_config = LMCacheConfig("configs/example-local.yaml"),
-        lmcache_config = LMCacheConfig(None),
+        lmcache_config = LMCacheConfig("configs/example.yaml"),
+        #lmcache_config = LMCacheConfig(None),
         envs = {"CUDA_VISIBLE_DEVICES": "0"})
 
     import copy
@@ -228,4 +240,7 @@ if __name__ == "__main__":
 
     workload_config = WorkloadConfig(1, 3, 1000, 100)
 
-    run_experiment(workload_config, Usecase.DUMMY, [config, config2])
+    test_case = TestCase([(workload_config, Usecase.DUMMY)], [config, config2])
+    #run_experiment(workload_config, Usecase.DUMMY, [config, config2])
+    results = run_test_case(test_case)
+    print(results)

@@ -12,16 +12,26 @@ class ProcessHandle:
     stdout_file: object
     stderr_file: object
 
-    def kill_and_close(self):
+    def kill_and_close(self, force_kill_after=60):
         """
         Kill the process by sending the SIGINT signal, then close the redirected stderr/stdout files
         """
-        os.killpg(os.getpgid(self.process.pid), signal.SIGINT)
+        if self.is_alive():
+            os.killpg(os.getpgid(self.process.pid), signal.SIGINT)
 
         if self.stderr_file is not None:
             self.stderr_file.close()
         if self.stdout_file is not None:
             self.stdout_file.close()
+
+        countdown = force_kill_after
+        while self.is_alive() and countdown > 0:
+            time.sleep(1)
+            countdown -= 1
+
+        # Force kill the process if it's still alive
+        if self.is_alive():
+            os.killpg(os.getpgid(self.process.pid), signal.SIGKILL)
 
     def is_alive(self):
         return self.process.poll() is None

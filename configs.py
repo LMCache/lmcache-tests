@@ -1,6 +1,7 @@
 from typing import Optional, Dict
 from enum import Enum
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
+import json
 
 @dataclass
 class Config:
@@ -38,6 +39,9 @@ class WorkloadConfig(Config):
     # Number of tokens in the suffix question
     query_length: int
     
+    def desc(self) -> str:
+        return json.dumps(asdict(self))
+
 
 @dataclass
 class LMCacheConfig(Config):
