@@ -47,11 +47,11 @@ class DumbWorkloadGenerator(WorkloadGenerator):
         return f"Index {index}. {question_prefix} Question: How are you doing today?"
 
     def generate(self) -> List[Request]:
-        num_requests = self.config.duration * self.config.qps
+        num_requests = int(self.config.duration * self.config.qps)
         
         ret = []
         for i in range(num_requests):
-            timestamp = i / self.config.qps
+            timestamp = i / self.config.qps + self.config.offset
             ret.append(Request(
                 timestamp=timestamp,
                 context=self.generate_context(),

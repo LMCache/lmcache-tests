@@ -9,6 +9,7 @@ from configs import BootstrapConfig, WorkloadConfig, Usecase
 from test_cases import TestCase
 from bootstrapper import CreateBootstrapper, Bootstrapper
 from workload import CreateWorkloadGenerator, Request
+from utils import read_gpu_memory
 
 import log
 logger = log.init_logger(__name__)
@@ -151,25 +152,26 @@ def run_experiment(
         for bootstrapper in bootstrappers:
             bootstrapper.close()
 
+    # Create the workloads
+    workload_generators = [CreateWorkloadGenerator(workload_config, usecase) for _ in engine_configs]
+    workloads = [generator.generate() for generator in workload_generators]
+
+
     # Start the serving engine
     bootstrappers = [CreateBootstrapper(config) for config in engine_configs]
     for bootstrapper in bootstrappers:
         bootstrapper.start()
 
-    # Create the workloads
-    workload_generators = [CreateWorkloadGenerator(workload_config, usecase) for _ in bootstrappers]
-    workloads = [generator.generate() for generator in workload_generators]
-
-    # Wait for the engines to be ready
-    for bootstrapper in bootstrappers:
-        ready = bootstrapper.wait_until_ready(timeout = 120)
-        if not ready:
-            logger.error(f"Engine {bootstrapper} is not ready")
-            cleanup(bootstrappers)
-            return
-
-    # Create the clients
     try:
+        # Wait for the engines to be ready
+        for bootstrapper in bootstrappers:
+            ready = bootstrapper.wait_until_ready(timeout = 120)
+            if not ready:
+                logger.error(f"Engine {bootstrapper} is not ready")
+                cleanup(bootstrappers)
+                return
+
+        # Create the clients
         clients = [create_openai_client(config.vllm_config.port) for config in engine_configs]
         models = [config.vllm_config.model for config in engine_configs]
 
@@ -179,68 +181,83 @@ def run_experiment(
         results = executor.execute_all()
 
         print(results)
+
+        # Read GPU memory utilization
+        gpu_usage = read_gpu_memory()
+
+    except Exception as e:
+        logger.error(f"Experiment failed: {e}")
+        cleanup(bootstrappers)
+        return None
+
     finally:
+        # Cleanup
         cleanup(bootstrappers)
 
-    # Cleanup
-    cleanup(bootstrappers)
-    return results
+    return results, gpu_usage
 
 def run_test_case(case: TestCase) -> pd.DataFrame:
     dfs = []
-    for workload_cfg, usecase in case.experiments:
+    for expr_id, (workload_cfg, usecase) in enumerate(case.experiments):
         results = run_experiment(workload_cfg, usecase, case.engines)
         if results is None:
             logger.error(f"Experiment failed: {workload_cfg.desc()} {usecase}")
             continue
+        else:
+            results, gpu_usage = results
+
         dataframe = pd.DataFrame([item.__dict__ for item in results])
         dataframe = dataframe.sort_values(by=["timestamp", "engine_id", "request_id"])
-        dataframe["workload"] = workload_cfg.desc()
+        dataframe["context_len"] = workload_cfg.context_length
+        dataframe["query_len"] = workload_cfg.query_length
+        #dataframe["workload"] = workload_cfg.desc()
+        dataframe["gpu_memory"] = gpu_usage
+        dataframe["expr_id"] = expr_id
         dfs.append(dataframe)
     return pd.concat(dfs)
 
-if __name__ == "__main__":
-    # test the request executor
-    #requests = [
-    #        [Request(1, "context1", "question1"), Request(3, "context1", "question2")],
-    #        [Request(2, "context2", "question1"), Request(4, "context2", "question2")],
-    #    ]
-    #clients = ["client1", "client2"]
-    #executor = RequestExecutor("model_name")
-    #executor.schedule_requests(requests, clients)
-    #print(executor.pending_requests)
-    #for val in executor.execute_all():
-    #    print(val)
-
-    from configs import VLLMConfig, VLLMOptionalConfig, LMCacheConfig, EngineType
-    vllm_config1 = VLLMConfig(
-        port = 8000,
-        model = "mistralai/Mistral-7B-Instruct-v0.2",
-        gpu_memory_utilization = 0.5,
-        tensor_parallel_size = 1)
-
-    vllm_config2 = VLLMConfig(
-        port = 8001,
-        model = "mistralai/Mistral-7B-Instruct-v0.2",
-        gpu_memory_utilization = 0.5,
-        tensor_parallel_size = 1)
-
-    config = BootstrapConfig(
-        engine_type = EngineType.LOCAL,
-        vllm_config = vllm_config1,
-        vllm_optional_config = VLLMOptionalConfig(),
-        lmcache_config = LMCacheConfig("configs/example.yaml"),
-        #lmcache_config = LMCacheConfig(None),
-        envs = {"CUDA_VISIBLE_DEVICES": "0"})
-
-    import copy
-    config2 = copy.deepcopy(config)
-    config2.vllm_config = vllm_config2
-    config2.envs = {"CUDA_VISIBLE_DEVICES": "1"}
-
-    workload_config = WorkloadConfig(1, 3, 1000, 100)
-
-    test_case = TestCase([(workload_config, Usecase.DUMMY)], [config, config2])
-    #run_experiment(workload_config, Usecase.DUMMY, [config, config2])
-    results = run_test_case(test_case)
-    print(results)
+#if __name__ == "__main__":
+#    # test the request executor
+#    #requests = [
+#    #        [Request(1, "context1", "question1"), Request(3, "context1", "question2")],
+#    #        [Request(2, "context2", "question1"), Request(4, "context2", "question2")],
+#    #    ]
+#    #clients = ["client1", "client2"]
+#    #executor = RequestExecutor("model_name")
+#    #executor.schedule_requests(requests, clients)
+#    #print(executor.pending_requests)
+#    #for val in executor.execute_all():
+#    #    print(val)
+#
+#    from configs import VLLMConfig, VLLMOptionalConfig, LMCacheConfig, EngineType
+#    vllm_config1 = VLLMConfig(
+#        port = 8000,
+#        model = "mistralai/Mistral-7B-Instruct-v0.2",
+#        gpu_memory_utilization = 0.5,
+#        tensor_parallel_size = 1)
+#
+#    vllm_config2 = VLLMConfig(
+#        port = 8001,
+#        model = "mistralai/Mistral-7B-Instruct-v0.2",
+#        gpu_memory_utilization = 0.5,
+#        tensor_parallel_size = 1)
+#
+#    config = BootstrapConfig(
+#        engine_type = EngineType.LOCAL,
+#        vllm_config = vllm_config1,
+#        vllm_optional_config = VLLMOptionalConfig(),
+#        lmcache_config = LMCacheConfig("configs/example.yaml"),
+#        #lmcache_config = LMCacheConfig(None),
+#        envs = {"CUDA_VISIBLE_DEVICES": "0"})
+#
+#    import copy
+#    config2 = copy.deepcopy(config)
+#    config2.vllm_config = vllm_config2
+#    config2.envs = {"CUDA_VISIBLE_DEVICES": "1"}
+#
+#    workload_config = WorkloadConfig(1, 3, 1000, 100)
+#
+#    test_case = TestCase([(workload_config, Usecase.DUMMY)], [config, config2])
+#    #run_experiment(workload_config, Usecase.DUMMY, [config, config2])
+#    results = run_test_case(test_case)
+#    print(results)

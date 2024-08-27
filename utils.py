@@ -1,4 +1,5 @@
 import os, sys
+import json
 import subprocess
 import signal
 import shlex
@@ -87,3 +88,12 @@ def estimate_num_tokens(text: str) -> int:
         estimate_num_tokens.tokenizer = AutoTokenizer.from_pretrained("lmsys/longchat-7b-16k")
 
     return len(estimate_num_tokens.tokenizer.tokenize(text))
+
+def read_gpu_memory():
+    """
+    Read the GPU memory usage by using nvidia-smi command
+    """
+    command = "nvidia-smi --query-gpu=memory.used --format=csv,nounits,noheader"
+    result = subprocess.run(command, shell=True, stdout=subprocess.PIPE)
+    return json.dumps(
+            {f"gpu-{id}":int(x) for id, x in enumerate(result.stdout.decode("utf-8").strip().split("\n"))})

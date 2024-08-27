@@ -38,6 +38,9 @@ class WorkloadConfig(Config):
 
     # Number of tokens in the suffix question
     query_length: int
+
+    # Offset of the timestamps
+    offset: float
     
     def desc(self) -> str:
         return json.dumps(asdict(self))

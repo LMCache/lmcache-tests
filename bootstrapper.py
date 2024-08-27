@@ -102,6 +102,9 @@ class LocalLMCacheServerBootstrapper(Bootstrapper):
         Returns the lmcache server host and port if it's lm://<host>:<port>
         Otherwise None
         """
+        if config_file is None:
+            return None
+
         with open(config_file, 'r') as fin:
             config = yaml.safe_load(fin)
 
