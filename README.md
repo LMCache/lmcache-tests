@@ -5,7 +5,7 @@ WIP...
 
 ## Run the tests
 
-```
+```bash
 # Run all the test functions defined in 'tests/tests.py' and save the output to 'outputs/'
 python3 main.py tests/tests.py -o outputs/
 
