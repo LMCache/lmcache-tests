@@ -1,211 +1,82 @@
+import argparse
+import importlib
+import sys
+import re
+import os
+import inspect
 import pandas as pd
 
-from driver import run_test_case
-from test_cases import TestCase
-from configs import BootstrapConfig, WorkloadConfig, Usecase
-from configs import VLLMConfig, VLLMOptionalConfig, LMCacheConfig, EngineType
+from log import init_logger
+logger = init_logger(__name__)
 
-
-##### Helper functions #####
-def CreateSingleLocalBootstrapConfig(
-        port: int,
-        gpu_id: int,
-        model: str,
-        lmcache_config_path: str
-    ) -> BootstrapConfig:
-
-    return BootstrapConfig(
-        engine_type=EngineType.LOCAL,
-        vllm_config = VLLMConfig(
-            port = port,
-            model = model,
-            gpu_memory_utilization = 0.5,
-            tensor_parallel_size = 1),
-        vllm_optional_config = VLLMOptionalConfig(),
-        lmcache_config = LMCacheConfig(lmcache_config_path),
-        envs = {"CUDA_VISIBLE_DEVICES": str(gpu_id)}
-    )
-
-def CreateDummyExperiment(num_requests, context_length, gap_between_requests = 8):
-    """
-    Create some requests for DUMMY usecase
-    The query length will be 16
-    """
-    qps = 1 / gap_between_requests
-    duration = num_requests * gap_between_requests
-    cfg = WorkloadConfig(qps, duration, context_length, 16, offset = 0)
-    return (cfg, Usecase.DUMMY)
-
-def wrapped_runner(test_func, output_file):
+def wrapped_test_runner(test_func, output_file):
     """
     Run the test case and save results to output file
     """
     output_df = test_func()
-    output_df.to_csv(output_file, index=False)
+    if isinstance(output_df, pd.DataFrame):
+        output_df.to_csv(output_file, index=False)
+        logger.info("Saving output to " + output_file)
+    else:
+        logger.warn(f"Output is {type(output)}, not a DataFrame. Skipping saving to file.")
 
-def process_result(result_csv: str):
-    """
-    Generate folloing plots:
-    - LINE, y: TTFT, x: request ID, color by engine id, graph by expr_id
-    - LINE, y: throughput, x: request ID, color by engine id, graph by expr_id
-    - BAR, y: GPU memory, x: expr_id, color by engine id
-    """
-    df = pd.read_csv(result_csv)
+def main():
+    parser = argparse.ArgumentParser(description="Execute all functions in a given Python file.")
+    parser.add_argument("filepath", help="The Python file to execute functions from (include subfolders if any).")
+    parser.add_argument("-f", "--filter", help="Pattern to filter which functions to execute.", default=None)
+    parser.add_argument("-l", "--list", help="List all functions in the module without executing them.", action="store_true")
+    parser.add_argument("-o", "--output-dir", help="The directory to put the output file.", default="outputs/")
+    args = parser.parse_args()
 
-    from matplotlib import pyplot as plot
-    from matplotlib.backends.backend_pdf import PdfPages
+    if not os.path.exists(args.output_dir):
+        os.makedirs(args.output_dir)
 
-    pdf_pages = PdfPages(result_csv.replace(".csv", ".pdf"))
-    df.groupby(["expr_id", "engine_id"]).plot(x="request_id", y="TTFT", title="TTFT", ax=plot.gca())
+    # Adjust the Python path to include the directory containing the module
+    module_path, module_file = os.path.split(args.filepath)
+    module_name = module_file.replace('.py', '')
 
-    pdf_pages.close()
+    if module_path not in sys.path:
+        sys.path.insert(0, module_path)
 
+    # Import the module dynamically
+    try:
+        logger.info(f"Importing testing script {module_name}...")
+        module = importlib.import_module(module_name)
+    except ModuleNotFoundError:
+        logger.error(f"Error: The testing script {module_name} could not be found.")
+        sys.exit(1)
+    except ImportError as e:
+        print(f"Import Error: {e}")
+        sys.exit(1)
 
-##### Test cases #####
-def test_lmcache_local_gpu() -> pd.DataFrame:
-    # Start two servers: with lmcache and without lmcache
-    config1 = CreateSingleLocalBootstrapConfig(8000, 0, "mistralai/Mistral-7B-Instruct-v0.2", "configs/lmcache_local_gpu.yaml")
-    config2 = CreateSingleLocalBootstrapConfig(8001, 1, "mistralai/Mistral-7B-Instruct-v0.2", None)
+    # Filter functions in the module
+    name_filter = "test_"
+    if args.filter:
+        logger.info(f"Filtering functions with pattern: {args.filter}")
+        name_filter = args.filter
 
-    # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
-    lengths = [8192, 16384, 24576]
-    experiments = [CreateDummyExperiment(5, length) for length in lengths]
+    function_list = []
+    function_names = []
+    for attr_name, attr_value in inspect.getmembers(module, inspect.isfunction):
+        if attr_value.__module__ == module.__name__ and callable(getattr(module, attr_name)):
+            func = getattr(module, attr_name)
+            if re.search(name_filter, attr_name):
+                logger.info(f"Found function: {attr_name}")
+                function_list.append(func)
+                function_names.append(attr_name)
 
-    test_case = TestCase(
-            experiments = experiments,
-            engines = [config1, config2])
+    logger.info(f"Collected {len(function_list)} functions to execute.")
 
-    # Run test case
-    final_result = run_test_case(test_case)
-    return final_result
+    if args.list:
+        logger.info("Listing functions in the module:")
+        for name in function_names:
+            print(name)
+        sys.exit(0)
 
-def test_lmcache_local_cpu() -> pd.DataFrame:
-    # Start two servers: with lmcache and without lmcache
-    config1 = CreateSingleLocalBootstrapConfig(8000, 0, "mistralai/Mistral-7B-Instruct-v0.2", "configs/lmcache_local_cpu.yaml")
-    config2 = CreateSingleLocalBootstrapConfig(8001, 1, "mistralai/Mistral-7B-Instruct-v0.2", None)
-
-    # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
-    lengths = [8192, 16384, 24576]
-    experiments = [CreateDummyExperiment(10, length) for length in lengths]
-
-    test_case = TestCase(
-            experiments = experiments,
-            engines = [config1, config2])
-
-    # Run test case
-    final_result = run_test_case(test_case)
-    return final_result
-
-def test_lmcache_local_disk() -> pd.DataFrame:
-    # Start two servers: with lmcache and without lmcache
-    config1 = CreateSingleLocalBootstrapConfig(8000, 0, "mistralai/Mistral-7B-Instruct-v0.2", "configs/lmcache_local_disk.yaml")
-    config2 = CreateSingleLocalBootstrapConfig(8001, 1, "mistralai/Mistral-7B-Instruct-v0.2", None)
-
-    # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
-    lengths = [8192, 16384, 24576]
-    experiments = [CreateDummyExperiment(10, length) for length in lengths]
-
-    test_case = TestCase(
-            experiments = experiments,
-            engines = [config1, config2])
-
-    # Run test case
-    final_result = run_test_case(test_case)
-    return final_result
-
-def test_lmcache_remote_cachegen() -> pd.DataFrame:
-    # Start two servers: with lmcache and without lmcache
-    config1 = CreateSingleLocalBootstrapConfig(8000, 0, "mistralai/Mistral-7B-Instruct-v0.2", "configs/lmcache_remote_cachegen.yaml")
-    config2 = CreateSingleLocalBootstrapConfig(8001, 1, "mistralai/Mistral-7B-Instruct-v0.2", "configs/lmcache_remote_cachegen_pipeline.yaml")
-
-    # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
-    lengths = [8192, 16384, 24576]
-    experiments = [CreateDummyExperiment(10, length) for length in lengths]
-
-    test_case = TestCase(
-            experiments = experiments,
-            engines = [config1, config2])
-
-    # Run test case
-    final_result = run_test_case(test_case)
-    return final_result
-
-def test_lmcache_remote_safetensor() -> pd.DataFrame:
-    # Start two servers: with lmcache and without lmcache
-    config1 = CreateSingleLocalBootstrapConfig(8000, 0, "mistralai/Mistral-7B-Instruct-v0.2", "configs/lmcache_remote_safetensor.yaml")
-    config2 = CreateSingleLocalBootstrapConfig(8001, 1, "mistralai/Mistral-7B-Instruct-v0.2", "configs/lmcache_remote_safetensor_pipeline.yaml")
-
-    # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
-    lengths = [8192, 16384, 24576]
-    experiments = [CreateDummyExperiment(10, length) for length in lengths]
-
-    test_case = TestCase(
-            experiments = experiments,
-            engines = [config1, config2])
-
-    # Run test case
-    final_result = run_test_case(test_case)
-    return final_result
-
-def test_lmcache_remote_disk() -> pd.DataFrame:
-    # Start two servers: with lmcache and without lmcache
-    config1 = CreateSingleLocalBootstrapConfig(8000, 0, "mistralai/Mistral-7B-Instruct-v0.2", "configs/lmcache_remote_cachegen.yaml")
-    config2 = CreateSingleLocalBootstrapConfig(8001, 1, "mistralai/Mistral-7B-Instruct-v0.2", None)
-
-    config1.lmcache_config.remote_device = "/local/lmcache-tests/lmcache-server"
-
-    # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
-    lengths = [8192, 16384, 24576]
-    experiments = [CreateDummyExperiment(10, length) for length in lengths]
-
-    test_case = TestCase(
-            experiments = experiments,
-            engines = [config1, config2])
-
-    # Run test case
-    final_result = run_test_case(test_case)
-    return final_result
-
-def test_lmcache_chatglm() -> pd.DataFrame:
-    # Start two servers: with lmcache and without lmcache
-    config1 = CreateSingleLocalBootstrapConfig(8000, 0, "THUDM/glm-4-9b-chat", "configs/lmcache_remote_cachegen.yaml")
-    config2 = CreateSingleLocalBootstrapConfig(8001, 1, "THUDM/glm-4-9b-chat", None)
-
-    config1.vllm_config.tensor_parallel_size = 2
-    config1.vllm_config.gpu_memory_utilization = 0.8
-    config1.envs = {}
-    config1.vllm_optional_config["trust_remote_code"] = ""
-
-    config2.vllm_config.tensor_parallel_size = 2
-    config2.vllm_config.gpu_memory_utilization = 0.8
-    config2.envs = {}
-    config2.vllm_optional_config["trust_remote_code"] = ""
-
-    # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
-    lengths = [8192, 16384, 24576]
-    experiments = [CreateDummyExperiment(10, length) for length in lengths]
-
-    test_case1 = TestCase(
-            experiments = experiments,
-            engines = [config1])
-
-    test_case2 = TestCase(
-            experiments = experiments,
-            engines = [config2])
-
-    # Run test case
-    final_result1 = run_test_case(test_case1)
-    final_result2 = run_test_case(test_case2)
-    final_result1["engine_id"] = 0
-    final_result2["engine_id"] = 1
-    return pd.concat([final_result1, final_result2])
+    for func, name in zip(function_list, function_names):
+        logger.info("Executing function: " + name)
+        wrapped_test_runner(func, f"outputs/{name}.csv")
 
 if __name__ == "__main__":
-    print("Start running test cases")
-    #wrapped_runner(test_lmcache_local_gpu, "outputs/test_lmcache_local_gpu.csv")
-    #wrapped_runner(test_lmcache_local_cpu, "outputs/test_lmcache_local_cpu.csv")
-    #wrapped_runner(test_lmcache_local_disk, "outputs/test_lmcache_local_disk.csv")
-    #wrapped_runner(test_lmcache_remote_safetensor, "outputs/test_lmcache_remote_safetensor.csv")
-    #wrapped_runner(test_lmcache_remote_cachegen, "outputs/test_lmcache_remote_cachegen.csv")
-    #wrapped_runner(test_lmcache_remote_disk, "outputs/test_lmcache_remote_disk.csv")
-    wrapped_runner(test_lmcache_chatglm, "outputs/test_lmcache_chatglm.csv")
+    main()
+

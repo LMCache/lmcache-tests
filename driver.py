@@ -60,22 +60,29 @@ class RequestExecutor:
         queue = multiprocessing.Queue()
         start_time = time.time()
         processes = []
-        for client_id, request_id, request, client, model in self.pending_requests:
-            already_elapsed = time.time() - start_time
-            # Wait for the request to be ready
-            wait_time = request.timestamp - already_elapsed
-            if wait_time > 0:
-                time.sleep(wait_time)
-            # Execute the request by a new process
-            process = multiprocessing.Process(
-                    target = self.execute_one_request, 
-                    args=(client_id, request_id, request, client, model, queue))
-            process.start()
-            processes.append(process)
+        try:
+            for client_id, request_id, request, client, model in self.pending_requests:
+                already_elapsed = time.time() - start_time
+                # Wait for the request to be ready
+                wait_time = request.timestamp - already_elapsed
+                if wait_time > 0:
+                    time.sleep(wait_time)
+                # Execute the request by a new process
+                process = multiprocessing.Process(
+                        target = self.execute_one_request, 
+                        args=(client_id, request_id, request, client, model, queue))
+                process.start()
+                processes.append(process)
 
-        # Wait for all the processes to finish
-        for process in processes:
-            process.join()
+            # Wait for all the processes to finish
+            for process in processes:
+                process.join()
+
+        except Exception as e:
+            logger.error(f"Exception happend when sending request: {e}")
+            for process in processes:
+                process.terminate()
+            return []
 
         return [queue.get() for _ in self.pending_requests]
 
@@ -108,26 +115,31 @@ def execute_openai_request(request: Request, model: str, client: openai.Client) 
 
     
     try:
+        logger.debug("Issusing a new request...")
         chat_completion = client.chat.completions.create(
                 messages = messages,
                 model = model,
                 temperature = 0,
                 stream = True,
+                max_tokens = 200,
             )
 
         start_time = time.perf_counter()
         first_token_time = None
         ntokens = 0
+        messages = []
         for chunk in chat_completion:
             chunk_message = chunk.choices[0].delta.content
             if chunk_message is not None:
                 if first_token_time is None:
                     first_token_time = time.perf_counter()
+                messages.append(chunk_message)
                 ntokens += 1
         end_time = time.perf_counter()
 
         ttft = first_token_time - start_time
         throughput = ntokens / (end_time - first_token_time)
+        logger.debug(f"Response: {''.join(messages)}")
     except Exception as e:
         logger.error(f"OpenAI request failed: {e}")
         return -1, -1
@@ -205,6 +217,9 @@ def run_experiment(
     return results, gpu_usage
 
 def run_test_case(case: TestCase) -> pd.DataFrame:
+    """
+    Run a single test case
+    """
     dfs = []
     for expr_id, (workload_cfg, usecase) in enumerate(case.experiments):
         results = run_experiment(workload_cfg, usecase, case.engines)
@@ -223,6 +238,20 @@ def run_test_case(case: TestCase) -> pd.DataFrame:
         dataframe["expr_id"] = expr_id
         dfs.append(dataframe)
     return pd.concat(dfs)
+
+def run_test_cases(cases: List[TestCase]) -> pd.DataFrame:
+    """
+    Run multiple test cases
+    The returned dataframe will have a new column "case_id"
+    """
+    dataframes = []
+    for case_id, case in enumerate(cases):
+        dataframe = run_test_case(case)
+        dataframe["case_id"] = case_id
+        dataframes.append(dataframe)
+
+    return pd.concat(dataframes)
+    
 
 #if __name__ == "__main__":
 #    # test the request executor
