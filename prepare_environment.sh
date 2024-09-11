@@ -4,7 +4,7 @@ set -e
 # Check conda
 if [[ -z $CONDA_DEFAULT_ENV || $CONDA_DEFAULT_ENV == "base" ]]; then
     echo -e "\033[31mPlease activate a conda environment before running this script.\033[0m"
-    echo -e "\033[31mRun `conda create -n lmcache python=3.10` then `conda activate lmcache`.\033[0m"
+    echo -e "\033[31mRun \`conda create -n lmcache python=3.10\` then \`conda activate lmcache\`.\033[0m"
     exit 1
 fi
 
