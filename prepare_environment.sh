@@ -1,6 +1,20 @@
 #!/bin/bash
 set -e
 
+# Check conda
+if [[ -z $CONDA_DEFAULT_ENV || $CONDA_DEFAULT_ENV == "base" ]]; then
+    echo -e "\033[31mPlease activate a conda environment before running this script.\033[0m"
+    echo -e "\033[31mRun `conda create -n lmcache python=3.10` then `conda activate lmcache`.\033[0m"
+    exit 1
+fi
+
+# Check python version matches 3.10
+python_version=$(python3 -c "import sys; print(sys.version_info[:2])")
+if [ "$python_version" != "(3, 10)" ]; then
+    echo -e "\033[31mPlease use Python 3 to run this script.\033[0m"
+    exit 1
+fi
+
 # Step 1: clone the code
 git clone https://github.com/LMCache/lmcache-vllm.git ../lmcache-vllm
 git clone https://github.com/LMCache/lmcache-server.git ../lmcache-server
