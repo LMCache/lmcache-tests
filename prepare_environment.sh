@@ -54,7 +54,7 @@ fi
 cd ../lmcache-vllm
 pip install -e .
 pip install nvtx openai
-output=$(python3 -c "import lmcache_vllm; print(lmcache_vllm.__name__)")
+output=$(python3 -c "import lmcache_vllm; print(lmcache_vllm.__name__)" | grep lmcache_vllm)
 if [ "$output" != "lmcache_vllm" ]; then
     echo -e "\033[31mLMCache vllm driver is not installed successfully.\033[0m"
     exit 1
@@ -63,7 +63,7 @@ fi
 # Step 5: install LMCache server
 cd ../lmcache-server
 pip install -e .
-output=$(python3 -c "import lmcache_server; print(lmcache_server.__name__)")
+output=$(python3 -c "import lmcache_server; print(lmcache_server.__name__)" | grep lmcache_server)
 if [ "$output" != "lmcache_server" ]; then
     echo -e "\033[31mLMCache server is not installed successfully.\033[0m"
     exit 1
