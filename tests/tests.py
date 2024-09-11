@@ -239,6 +239,23 @@ def test_lmcache_chatglm() -> pd.DataFrame:
     # Run test case
     return run_test_cases([test_case1, test_case2])
 
+def test_lmcache_redis_sentinel() -> pd.DataFrame:
+    # Start two servers: with lmcache and without lmcache
+    config1 = CreateSingleLocalBootstrapConfig(8000, 1, "mistralai/Mistral-7B-Instruct-v0.2", "configs/lmcache_redis_sentinel_cachegen.yaml")
+
+    # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
+    #lengths = [8192, 16384, 24576]
+    lengths = [24576]
+    experiments = [CreateDummyExperiment(10, length) for length in lengths]
+
+    test_case = TestCase(
+            experiments = experiments,
+            engines = [config1])
+
+    # Run test case
+    final_result = run_test_case(test_case)
+    return final_result
+
 def dumb_test() -> None:
     print("This is a dumb_test") 
 

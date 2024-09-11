@@ -185,7 +185,7 @@ def run_experiment(
     try:
         # Wait for the engines to be ready
         for bootstrapper in bootstrappers:
-            ready = bootstrapper.wait_until_ready(timeout = 180)
+            ready = bootstrapper.wait_until_ready(timeout = 300)
             if not ready:
                 logger.error(f"Engine {bootstrapper} is not ready")
                 cleanup(bootstrappers)

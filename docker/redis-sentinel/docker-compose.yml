@@ -1,0 +1,45 @@
+version: '3.7'
+
+services:
+ 
+  redis-master:
+    image: redis:6-alpine
+    volumes:
+      - "/local/lmcache-tests/redis-data:/data"
+    ports:
+      - "6379:6379"
+ 
+  redis-slave:
+    image: redis:6-alpine
+    command: redis-server --slaveof redis-master 6379
+    links:
+      - redis-master
+    volumes:
+      - "/local/lmcache-tests/redis-data:/data"
+     
+  # Instance 1
+  redis-sentinel:
+    build: 
+      context: ./redis-sentinel
+    ports:
+      - "26379:26379"
+    links:
+      - redis-master
+ 
+  # Instance 2
+  redis-sentinel2:
+    build: 
+      context: ./redis-sentinel
+    ports:
+      - "26380:26379"
+    links:
+      - redis-master
+ 
+  # Instance 3
+  redis-sentinel3:
+    build: 
+      context: ./redis-sentinel
+    ports:
+      - "26381:26379"
+    links:
+      - redis-master

@@ -12,6 +12,8 @@ class ProcessHandle:
     process: subprocess.Popen
     stdout_file: object
     stderr_file: object
+    stdout_filename: str = None
+    stderr_filename: str = None
 
     def kill_and_close(self, force_kill_after=60):
         """
@@ -24,6 +26,11 @@ class ProcessHandle:
             self.stderr_file.close()
         if self.stdout_file is not None:
             self.stdout_file.close()
+
+        if self.stdout_filename is not None:
+            os.remove(self.stdout_filename)
+        if self.stderr_filename is not None:
+            os.remove(self.stderr_filename)
 
         countdown = force_kill_after
         while self.is_alive() and countdown > 0:
@@ -78,7 +85,7 @@ def run_command(command, outfile=None, errfile=None, detach=False, **kwargs):
             err.close()
         return process.returncode == 0, process.stdout
     else:
-        return ProcessHandle(process, out, err)
+        return ProcessHandle(process, out, err, outfile, errfile)
 
 
 def estimate_num_tokens(text: str) -> int:
