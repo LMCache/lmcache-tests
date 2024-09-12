@@ -1,5 +1,7 @@
 # End-to-end test for LMCache
 
+Note: currently, this doc is for onboarding the new developers. Will have a separate README in the future for general audiences.
+
 ## 1. Environment installation
 
 ```bash
@@ -13,9 +15,9 @@ bash prepare_environment.sh
 
 ## 2. Run the tests
 
-### 2.1 Quick start example
+### 2.1 Quickstart example
 
-The following commandline runs the test `test_lmcache_local_cpu` defined in `tests/tests.py` and write the output results to the output folder (`outputs/test_lmcache_local_cpu.csv`).
+The following command line runs the test `test_lmcache_local_cpu` defined in `tests/tests.py` and write the output results to the output folder (`outputs/test_lmcache_local_cpu.csv`).
 
 ```bash
 python3 main.py tests/test.py -f test_lmcache_local_cpu -o outputs/
@@ -70,14 +72,14 @@ python3 main.py tests/tests.py -o outputs/
 # List the tests in 'tests/tests.py'
 python3 main.py tests/tests.py -l
 
-# Run some specific tests that matches the given pattern (e.g., containing 'cachegen')
+# Run some specific tests that match the given pattern (e.g., containing 'cachegen')
 python3 main.py tests/tests.py -f cachegen
 ```
 
 ### 2.3 Output parsing
 
 In general, each test function should output the results as a csv file, where the file name is the same as function name but with a `csv` suffix.
-There should be multiple columns in the csv:
+There should be multiple columns in the CSV:
 - `expr_id`: the id of the experiment
 - `timestamp`: the timestamp of the request in the workload
 - `engine_id`: the id of the serving engine instance to which the request is sent
@@ -88,16 +90,68 @@ There should be multiple columns in the csv:
 - `query_len`: the query length of this request
 - `gpu_memory`: the gpu memory used before this experiment is finished
 
-Some example code of how to parse the output csv can be found in `outputs/process_result.py`.
+Some example codes of how to parse the output CSV can be found in `outputs/process_result.py`.
 
 
 ## 3. Contributing guide: understanding the code
 
-### Basic terminology
+### 3.1 Basic terminology
 
-### Main components
+- **`Request`**: A request is a single prompt containing some context and a user query.
+- **`Engine`**: Means "serving engine". An engine is an LLM serving engine process that can process requests through the OpenAI API interface.
+- **`Workload`**: A workload is a list of requests at different timestamps. Usually, a workload is associated with only one engine.
+- **`Experiment`**: An experiment runs multiple engines simultaneously and sends the workloads generated from the _same_ configuration to the serving engines.
+- **`Test case`**: A test case contains a list of experiments. The goal is to compare the performance of different engines under different workloads. 
+- **`Test function`**: A test function wraps the test cases and saves the output CSV. In most cases, a single test function only contains one test case. Different test functions aim to test different functionalities of the system.
 
-### Key interfaces
+### 3.2 Main components
 
+**Test case configuration**:
+
+Test case configuration controls the experiments to run. The configuration-related code can be found in [config.py](https://github.com/LMCache/lmcache-tests/blob/main/configs.py).
+
+Currently, we support the following configurations:
+- **Workload configuration**: Specifies the QPS, context length, query length, and total duration of the workload.
+- **vLLM configuration**: Controls the command line arguments used to start vLLM.
+- **LMCache configuration**: Points to a LMCache configuration file.
+
+During the experiment, workload configuration will be used to generate the workloads, and vLLM configuration + LMCache configuration will be used to start the engine.
+
+**Workload generator**:
+
+The workload generator takes in a workload configuration and generates the workload (*i.e.*, a list of requests at different timestamps) as the output.
+The code for the workload generator can be found in [workload.py](https://github.com/LMCache/lmcache-tests/blob/main/workload.py).
+
+By design, there could be multiple different kinds of workload generators for different use cases, such as chatbot, QA, or RAG. 
+The class `Usecase` is used to specify which workload generator to create during runtime. 
+Currently, we only support a `DUMMY` use case where the requests in the generated workload only contain dummy texts and questions.
+
+The workload generator, once initialized with a configuration, only provides a single method: `generate(self) -> Workload`.
+
+**Engine bootstrapper**:
+
+The engine bootstrapper pulls up the serving engine based on the configurations (vLLM configuration + LMCache configuration).
+Currently, we only support starting vLLM (with or without LMCache) from the terminal. We will support docker-based engines in the future.
+The code can be found in [bootstrapper.py](https://github.com/LMCache/lmcache-tests/blob/main/bootstrapper.py)
+
+The engine bootstrapper supports the following methods:
+- `start(self)`: Non-blocking function to start the serving engine.
+- `wait_until_ready(self, timeout=60) -> bool`: Block until the serving engine is ready or it's dead or timeout is reached. Returns true if it's ready, otherwise false.
+- `is_healthy(self) -> bool`: Non-block function to check if the engine is alive or not.
+- `close(self)`: blocking function to shutdown the serving engine
+
+**Experiment runner**:
+
+The experiment runner takes in _one_ workload config and $N$ engine configs as input. It does the following things:
+- Create the $N$ workload generators from the workload config.
+- Generate $N$ workloads.
+- Bootstrap all the serving engines. (This requires that the engine config is correct in a way that multiple serving engines can run at the same time).
+- Send the requests at the given timestamps to the engines.
+- Collect the TTFT, throughput, and the GPU memory usage.
+- Return the results in a pandas dataframe.
+
+The code can be found in [driver.py](https://github.com/LMCache/lmcache-tests/blob/main/driver.py)
 
 ## 4. Contributing guide: adding new tests
+
+(WIP)
