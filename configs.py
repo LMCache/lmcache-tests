@@ -54,15 +54,16 @@ class LMCacheConfig(Config):
     remote_device: Optional[str] = None
 
     def cmdargs(self) -> str:
-        return f"--lmcache-config-file {self.config_path}" if self.config_path is not None else ""
+        return " " if self.config_path is not None else ""
+        # return f"--lmcache-config-file {self.config_path}" if self.config_path is not None else ""
 
 @dataclass
 class VLLMConfig(Config):
-    # vLLM engine's port 
-    port: int
-
     # which Model is used
     model: str
+
+    # vLLM engine's port 
+    port: int
 
     # Memory limit for the vLLM engine
     gpu_memory_utilization: float
@@ -74,6 +75,9 @@ class VLLMConfig(Config):
         args = []
         for key, value in self.__dict__.items():
             if value is None:
+                continue
+            if key=="model":
+                args.append(f"{value}")
                 continue
             modified_key = key.replace("_", "-")
             args.append(f"--{modified_key} {value}")

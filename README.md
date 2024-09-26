@@ -1,15 +1,29 @@
 # End-to-end test for LMCache
 
-Note: currently, this doc is for onboarding the new developers. Will have a separate README in the future for general audiences.
+> Note: currently, this doc is for onboarding the new developers. Will have a separate README in the future for general audiences.
+
+It's recommended to create a new folder before cloning the repository. The final file structure will look like as follows:
+
+```
+<parent-folder>/
+©À©¤©¤ lmcache-test/
+©À©¤©¤ LMCache/
+©¸©¤©¤ lmcache-vllm/
+```
 
 ## 1. Environment installation
+
 
 ```bash
 # Create conda environment
 conda create -n lmcache python=3.10
 conda activate lmcache
 
-# run the installation script
+# Clone github repository
+git clone git@github.com:LMCache/lmcache-tests.git
+cd lmcache-tests
+
+# Run the installation script
 bash prepare_environment.sh
 ```
 
@@ -20,7 +34,7 @@ bash prepare_environment.sh
 The following command line runs the test `test_lmcache_local_cpu` defined in `tests/tests.py` and write the output results to the output folder (`outputs/test_lmcache_local_cpu.csv`).
 
 ```bash
-python3 main.py tests/test.py -f test_lmcache_local_cpu -o outputs/
+python3 main.py tests/tests.py -f test_lmcache_local_cpu -o outputs/
 ```
 
 To process the result, please run

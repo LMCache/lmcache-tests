@@ -21,7 +21,7 @@ def CreateSingleLocalBootstrapConfig(
         vllm_config = VLLMConfig(
             port = port,
             model = model,
-            gpu_memory_utilization = 0.5,
+            gpu_memory_utilization = 0.8,
             tensor_parallel_size = 1),
         vllm_optional_config = VLLMOptionalConfig(),
         lmcache_config = LMCacheConfig(lmcache_config_path),
@@ -65,7 +65,8 @@ def test_lmcache_local_cpu() -> pd.DataFrame:
 
     # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
     lengths = [8192, 16384, 24576]
-    experiments = [CreateDummyExperiment(10, length) for length in lengths]
+    # lengths = [8192]
+    experiments = [CreateDummyExperiment(10, length ) for length in lengths]
 
     test_case = TestCase(
             experiments = experiments,
@@ -193,7 +194,7 @@ def test_lmcache_safetensor_distributed() -> pd.DataFrame:
 def test_lmcache_remote_disk() -> pd.DataFrame:
     # Start two servers: with lmcache and without lmcache
     config1 = CreateSingleLocalBootstrapConfig(8000, 0, "mistralai/Mistral-7B-Instruct-v0.2", "configs/lmcache_remote_cachegen.yaml")
-    config2 = CreateSingleLocalBootstrapConfig(8001, 1, "mistralai/Mistral-7B-Instruct-v0.2", None)
+    config2 = CreateSingleLocalBootstrapConfig(8002, 1, "mistralai/Mistral-7B-Instruct-v0.2", None)
 
     config1.lmcache_config.remote_device = "/local/lmcache-tests/lmcache-server"
 
