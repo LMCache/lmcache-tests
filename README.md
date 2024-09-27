@@ -6,9 +6,9 @@ It's recommended to create a new folder before cloning the repository. The final
 
 ```
 <parent-folder>/
-©À©¤©¤ lmcache-test/
-©À©¤©¤ LMCache/
-©¸©¤©¤ lmcache-vllm/
+|--- lmcache-test/
+|--- LMCache/
+|--- lmcache-vllm/
 ```
 
 ## 1. Environment installation
