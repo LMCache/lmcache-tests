@@ -100,8 +100,9 @@ class LocalLMCacheServerBootstrapper(Bootstrapper):
         else:
             self.is_needed = True
             self.host, self.port = server_config
-            self.stdout_log = os.path.join(log_dir, f"lmcache-server-{self.port}-stdout.log")
-            self.stderr_log = os.path.join(log_dir, f"lmcache-server-{self.port}-stderr.log")
+            self.user_name=os.popen('whoami').read()[:-1]
+            self.stdout_log = os.path.join(log_dir, f"{self.user_name}-lmcache-server-{self.port}-stdout.log")
+            self.stderr_log = os.path.join(log_dir, f"{self.user_name}-lmcache-server-{self.port}-stderr.log")
 
     def parse_lmcache_server_config(self, config_file: str) -> Optional[Tuple[str, int]]:
         """
@@ -132,7 +133,9 @@ class LocalLMCacheServerBootstrapper(Bootstrapper):
         if not self.is_needed:
             return
 
-        cmd = f"python3 -um lmcache_server.server {self.host} {self.port} {self.remote_device}"
+        # cmd = f"python3 -um lmcache_server.server {self.host} {self.port} {self.remote_device}"
+        cmd = f"python -um lmcache.server  {self.host} {self.port} "
+        print(f"\033[32mLaunching Remote LMCache Server with Command :\033[0m {cmd}")
         self.handle = run_command(cmd, self.stdout_log, self.stderr_log, detach=True)
         self.started = True
 
@@ -211,15 +214,25 @@ class LocalVllmBootstrapper(Bootstrapper):
     def __init__(self, config: BootstrapConfig, log_dir = "/tmp"):
         super().__init__(config)
         self.command = self.get_cmdline()
-        self.stdout_log = os.path.join(log_dir, f"{self.config.vllm_config.port}-stdout.log")
-        self.stderr_log = os.path.join(log_dir, f"{self.config.vllm_config.port}-stderr.log")
+        self.user_name=os.popen('whoami').read()[:-1]
+        self.stdout_log = os.path.join(log_dir, f"{self.user_name}-{self.config.vllm_config.port}-stdout.log")
+        self.stderr_log = os.path.join(log_dir, f"{self.user_name}-{self.config.vllm_config.port}-stderr.log")
 
         self.handle = None
         self.lmcache_server_handler = LMCacheServerManager.get_or_create(config)
 
     def get_cmdline(self) -> str:
         extra_args = "--trust-remote-code"
-        return f"python3 -m vllm.entrypoints.openai.api_server {self.config.vllm_config.cmdargs()} {self.config.vllm_optional_config.cmdargs()} {self.config.lmcache_config.cmdargs()} {extra_args}"
+        if self.config.lmcache_config.cmdargs() == " ":
+            os.environ["LMCACHE_CONFIG_FILE"]=self.config.lmcache_config.config_path
+            print(f"\033[32mLaunching Engine with Command :\033[0m LMCACHE_CONFIG_FILE={self.config.lmcache_config.config_path}  lmcache_vllm serve {self.config.vllm_config.cmdargs()} {self.config.vllm_optional_config.cmdargs()} {extra_args}")
+            return f"lmcache_vllm serve {self.config.vllm_config.cmdargs()} {self.config.vllm_optional_config.cmdargs()} {extra_args}"
+        else:
+            print(f"\033[32mLaunching Engine with Command :\033[0m vllm serve {self.config.vllm_config.cmdargs()} {self.config.vllm_optional_config.cmdargs()} {extra_args}")
+            return f"vllm serve {self.config.vllm_config.cmdargs()} {self.config.vllm_optional_config.cmdargs()} {extra_args}"
+
+
+        # return f"python3 -m vllm.entrypoints.openai.api_server {self.config.vllm_config.cmdargs()} {self.config.vllm_optional_config.cmdargs()} {self.config.lmcache_config.cmdargs()} {extra_args}"
 
     def start(self):
         self.lmcache_server_handler.start()
