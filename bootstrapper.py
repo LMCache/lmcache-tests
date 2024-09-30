@@ -225,8 +225,12 @@ class LocalVllmBootstrapper(Bootstrapper):
         extra_args = "--trust-remote-code"
         if self.config.lmcache_config.cmdargs() == " ":
             os.environ["LMCACHE_CONFIG_FILE"]=self.config.lmcache_config.config_path
-            print(f"\033[32mLaunching Engine with Command :\033[0m LMCACHE_CONFIG_FILE={self.config.lmcache_config.config_path}  lmcache_vllm serve {self.config.vllm_config.cmdargs()} {self.config.vllm_optional_config.cmdargs()} {extra_args}")
-            return f"lmcache_vllm serve {self.config.vllm_config.cmdargs()} {self.config.vllm_optional_config.cmdargs()} {extra_args}"
+            #print(f"\033[32mLaunching Engine with Command :\033[0m LMCACHE_CONFIG_FILE={self.config.lmcache_config.config_path}  lmcache_vllm serve {self.config.vllm_config.cmdargs()} {self.config.vllm_optional_config.cmdargs()} {extra_args}")
+            #return f"lmcache_vllm serve {self.config.vllm_config.cmdargs()} {self.config.vllm_optional_config.cmdargs()} {extra_args}"
+            # FIXME(Jiayi): using `serve` command cannot activate lmcache
+            # using `entrypoints` for now
+            print(f"\033[32mLaunching Engine with Command :\033[0m LMCACHE_CONFIG_FILE={self.config.lmcache_config.config_path}  python3 -m lmcache_vllm.vllm.entrypoints.openai.api_server --model {self.config.vllm_config.cmdargs()} {self.config.vllm_optional_config.cmdargs()} {extra_args}")
+            return f"python3 -m lmcache_vllm.vllm.entrypoints.openai.api_server --model {self.config.vllm_config.cmdargs()} {self.config.vllm_optional_config.cmdargs()} {extra_args}"
         else:
             print(f"\033[32mLaunching Engine with Command :\033[0m vllm serve {self.config.vllm_config.cmdargs()} {self.config.vllm_optional_config.cmdargs()} {extra_args}")
             return f"vllm serve {self.config.vllm_config.cmdargs()} {self.config.vllm_optional_config.cmdargs()} {extra_args}"
