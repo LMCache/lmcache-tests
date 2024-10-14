@@ -38,13 +38,34 @@ def CreateDummyExperiment(num_requests, context_length, gap_between_requests = 8
     cfg = WorkloadConfig(qps, duration, context_length, 16, offset = 0)
     return (cfg, Usecase.DUMMY)
 
+def ModelConfig(model: str, BootstrapConfig) -> None:
+    """
+    Set configuration for bootstrap for different models
+    """
+    match model:
+        case "mistralai/Mistral-7B-Instruct-v0.2":
+            pass
+        case "THUDM/glm-4-9b-chat":
+            BootstrapConfig.vllm_config.tensor_parallel_size = 2
+            BootstrapConfig.vllm_config.gpu_memory_utilization = 0.8
+            BootstrapConfig.envs = {}
+            BootstrapConfig.vllm_optional_config["trust_remote_code"] = ""
+        case "meta-llama/Llama-3.1-8B-Instruct":
+            BootstrapConfig.vllm_optional_config["enable_chunked_prefill"] = False
+            BootstrapConfig.vllm_optional_config["max_model_len"] = 32768
+        case _:
+            pass
 
 
 ##### Test cases #####
-def test_lmcache_local_gpu() -> pd.DataFrame:
+def test_lmcache_local_gpu(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
     # Start two servers: with lmcache and without lmcache
-    config1 = CreateSingleLocalBootstrapConfig(8000, 0, "mistralai/Mistral-7B-Instruct-v0.2", "configs/lmcache_local_gpu.yaml")
-    config2 = CreateSingleLocalBootstrapConfig(8001, 1, "mistralai/Mistral-7B-Instruct-v0.2", None)
+    config1 = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_local_gpu.yaml")
+    config2 = CreateSingleLocalBootstrapConfig(8001, 1, model, None)
+
+    # Set vllm configuration for different models
+    ModelConfig(model, config1)
+    ModelConfig(model, config2)
 
     # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
     lengths = [8192, 16384, 24576]
@@ -58,12 +79,16 @@ def test_lmcache_local_gpu() -> pd.DataFrame:
     final_result = run_test_case(test_case)
     return final_result
 
-def test_lmcache_local_cpu() -> pd.DataFrame:
+def test_lmcache_local_cpu(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
     # Start two servers: with lmcache and without lmcache
-    config1 = CreateSingleLocalBootstrapConfig(8000, 0, "mistralai/Mistral-7B-Instruct-v0.2", "configs/lmcache_local_cpu.yaml")
-    config2 = CreateSingleLocalBootstrapConfig(8001, 1, "mistralai/Mistral-7B-Instruct-v0.2", None)
+    config1 = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_local_cpu.yaml")
+    config2 = CreateSingleLocalBootstrapConfig(8001, 1, model, None)
 
-    # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
+    # Set vllm configuration for different models
+    ModelConfig(model, config1)
+    ModelConfig(model, config2)
+
+    # Experiments: 8K, 16K, 24K shared context, each experiments has 10 queries
     lengths = [8192, 16384, 24576]
     # lengths = [8192]
     experiments = [CreateDummyExperiment(10, length ) for length in lengths]
@@ -76,10 +101,14 @@ def test_lmcache_local_cpu() -> pd.DataFrame:
     final_result = run_test_case(test_case)
     return final_result
 
-def test_lmcache_local_disk() -> pd.DataFrame:
+def test_lmcache_local_disk(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame: 
     # Start two servers: with lmcache and without lmcache
-    config1 = CreateSingleLocalBootstrapConfig(8000, 0, "mistralai/Mistral-7B-Instruct-v0.2", "configs/lmcache_local_disk.yaml")
-    config2 = CreateSingleLocalBootstrapConfig(8001, 1, "mistralai/Mistral-7B-Instruct-v0.2", None)
+    config1 = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_local_disk.yaml")
+    config2 = CreateSingleLocalBootstrapConfig(8001, 1, model, None)
+
+    # Set vllm configuration for different models
+    ModelConfig(model, config1)
+    ModelConfig(model, config2)
 
     # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
     lengths = [8192, 16384, 24576]
@@ -93,15 +122,18 @@ def test_lmcache_local_disk() -> pd.DataFrame:
     final_result = run_test_case(test_case)
     return final_result
 
-def test_lmcache_local_distributed() -> pd.DataFrame:
+def test_lmcache_local_distributed(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame: 
     """
     Local CPU + TP = 2
     """
-    config = CreateSingleLocalBootstrapConfig(8000, 0, "mistralai/Mistral-7B-Instruct-v0.2", "configs/lmcache_local_cpu.yaml")
+    config = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_local_cpu.yaml")
 
     config.vllm_config.tensor_parallel_size = 2
     config.vllm_config.gpu_memory_utilization = 0.6
     config.envs = {}
+
+    # Set vllm configuration for different models
+    ModelConfig(model, config)
 
     # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
     lengths = [8192, 16384, 24576]
@@ -115,11 +147,15 @@ def test_lmcache_local_distributed() -> pd.DataFrame:
     final_result = run_test_case(test_case)
     return final_result
 
-def test_lmcache_remote_cachegen() -> pd.DataFrame:
+def test_lmcache_remote_cachegen(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
     # Start two servers: with lmcache and without lmcache
-    config1 = CreateSingleLocalBootstrapConfig(8000, 0, "mistralai/Mistral-7B-Instruct-v0.2", "configs/lmcache_remote_cachegen.yaml")
-    config2 = CreateSingleLocalBootstrapConfig(8001, 1, "mistralai/Mistral-7B-Instruct-v0.2", "configs/lmcache_remote_cachegen_pipeline.yaml")
+    config1 = CreateSingleLocalBootstrapConfig(8002, 0, model, "configs/lmcache_remote_cachegen.yaml")
+    config2 = CreateSingleLocalBootstrapConfig(8001, 1, model, "configs/lmcache_remote_cachegen_pipeline.yaml")
 
+    # Set vllm configuration for different models
+    ModelConfig(model, config1)
+    ModelConfig(model, config2)
+    
     # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
     lengths = [8192, 16384, 24576]
     experiments = [CreateDummyExperiment(10, length) for length in lengths]
@@ -132,13 +168,16 @@ def test_lmcache_remote_cachegen() -> pd.DataFrame:
     final_result = run_test_case(test_case)
     return final_result
 
-def test_lmcache_cachegen_distributed() -> pd.DataFrame:
-    config = CreateSingleLocalBootstrapConfig(8000, 0, "mistralai/Mistral-7B-Instruct-v0.2", "configs/lmcache_remote_cachegen.yaml")
+def test_lmcache_cachegen_distributed(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
+    config = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_remote_cachegen.yaml")
     #config = CreateSingleLocalBootstrapConfig(8000, 0, "facebook/opt-125m", "configs/lmcache_remote_cachegen.yaml")
 
     config.vllm_config.tensor_parallel_size = 2
     config.vllm_config.gpu_memory_utilization = 0.6
     config.envs = {"CUDA_LAUNCH_BLOCKING": "0"}
+
+    # Set vllm configuration for different models
+    ModelConfig(model, config)
 
     # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
     lengths = [16384, 24576]
@@ -152,11 +191,15 @@ def test_lmcache_cachegen_distributed() -> pd.DataFrame:
     final_result = run_test_case(test_case)
     return final_result
 
-def test_lmcache_remote_safetensor() -> pd.DataFrame:
+def test_lmcache_remote_safetensor(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
     # Start two servers: with lmcache and without lmcache
-    config1 = CreateSingleLocalBootstrapConfig(8000, 0, "mistralai/Mistral-7B-Instruct-v0.2", "configs/lmcache_remote_safetensor.yaml")
-    config2 = CreateSingleLocalBootstrapConfig(8001, 1, "mistralai/Mistral-7B-Instruct-v0.2", "configs/lmcache_remote_safetensor_pipeline.yaml")
+    config1 = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_remote_safetensor.yaml")
+    config2 = CreateSingleLocalBootstrapConfig(8001, 1, model, "configs/lmcache_remote_safetensor_pipeline.yaml")
 
+    # Set vllm configuration for different models
+    ModelConfig(model, config1)
+    ModelConfig(model, config2)
+    
     # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
     lengths = [8192, 16384, 24576]
     experiments = [CreateDummyExperiment(10, length) for length in lengths]
@@ -169,15 +212,18 @@ def test_lmcache_remote_safetensor() -> pd.DataFrame:
     final_result = run_test_case(test_case)
     return final_result
 
-def test_lmcache_safetensor_distributed() -> pd.DataFrame:
+def test_lmcache_safetensor_distributed(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
     """
     LMCache remote safetensor + TP = 2
     """
-    config = CreateSingleLocalBootstrapConfig(8000, 0, "mistralai/Mistral-7B-Instruct-v0.2", "configs/lmcache_remote_safetensor.yaml")
+    config = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_remote_safetensor.yaml")
 
     config.vllm_config.tensor_parallel_size = 2
     config.vllm_config.gpu_memory_utilization = 0.6
     config.envs = {}
+
+    # Set vllm configuration for different models
+    ModelConfig(model, config)
 
     # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
     lengths = [8192, 16384, 24576]
@@ -191,12 +237,16 @@ def test_lmcache_safetensor_distributed() -> pd.DataFrame:
     final_result = run_test_case(test_case)
     return final_result
 
-def test_lmcache_remote_disk() -> pd.DataFrame:
+def test_lmcache_remote_disk(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
     # Start two servers: with lmcache and without lmcache
-    config1 = CreateSingleLocalBootstrapConfig(8000, 0, "mistralai/Mistral-7B-Instruct-v0.2", "configs/lmcache_remote_cachegen.yaml")
-    config2 = CreateSingleLocalBootstrapConfig(8002, 1, "mistralai/Mistral-7B-Instruct-v0.2", None)
+    config1 = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_remote_cachegen.yaml")
+    config2 = CreateSingleLocalBootstrapConfig(8001, 1, model, None)
 
     config1.lmcache_config.remote_device = "/local/lmcache-tests/lmcache-server"
+
+    # Set vllm configuration for different models
+    ModelConfig(model, config1)
+    ModelConfig(model, config2)
 
     # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
     lengths = [8192, 16384, 24576]
@@ -210,40 +260,42 @@ def test_lmcache_remote_disk() -> pd.DataFrame:
     final_result = run_test_case(test_case)
     return final_result
 
-def test_lmcache_chatglm() -> pd.DataFrame:
-    # Start two servers: with lmcache and without lmcache
-    config1 = CreateSingleLocalBootstrapConfig(8000, 0, "THUDM/glm-4-9b-chat", "configs/lmcache_remote_cachegen.yaml")
-    config2 = CreateSingleLocalBootstrapConfig(8001, 1, "THUDM/glm-4-9b-chat", None)
+# def test_lmcache_chatglm() -> pd.DataFrame:
+#     # Start two servers: with lmcache and without lmcache
+#     config1 = CreateSingleLocalBootstrapConfig(8000, 0, "THUDM/glm-4-9b-chat", "configs/lmcache_remote_cachegen.yaml")
+#     config2 = CreateSingleLocalBootstrapConfig(8001, 1, "THUDM/glm-4-9b-chat", None)
 
-    config1.vllm_config.tensor_parallel_size = 2
-    config1.vllm_config.gpu_memory_utilization = 0.8
-    config1.envs = {}
-    config1.vllm_optional_config["trust_remote_code"] = ""
+#     config1.vllm_config.tensor_parallel_size = 2
+#     config1.vllm_config.gpu_memory_utilization = 0.8
+#     config1.envs = {}
+#     config1.vllm_optional_config["trust_remote_code"] = ""
 
-    config2.vllm_config.tensor_parallel_size = 2
-    config2.vllm_config.gpu_memory_utilization = 0.8
-    config2.envs = {}
-    config2.vllm_optional_config["trust_remote_code"] = ""
+#     config2.vllm_config.tensor_parallel_size = 2
+#     config2.vllm_config.gpu_memory_utilization = 0.8
+#     config2.envs = {}
+#     config2.vllm_optional_config["trust_remote_code"] = ""
 
-    # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
-    lengths = [8192, 16384, 24576]
-    experiments = [CreateDummyExperiment(10, length) for length in lengths]
+#     # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
+#     lengths = [8192, 16384, 24576]
+#     experiments = [CreateDummyExperiment(10, length) for length in lengths]
 
-    test_case1 = TestCase(
-            experiments = experiments,
-            engines = [config1])
+#     test_case1 = TestCase(
+#             experiments = experiments,
+#             engines = [config1])
 
-    test_case2 = TestCase(
-            experiments = experiments,
-            engines = [config2])
+#     test_case2 = TestCase(
+#             experiments = experiments,
+#             engines = [config2])
 
-    # Run test case
-    return run_test_cases([test_case1, test_case2])
+#     # Run test case
+#     return run_test_cases([test_case1, test_case2])
 
-def test_lmcache_redis_sentinel() -> pd.DataFrame:
-    # Start two servers: with lmcache and without lmcache
-    config1 = CreateSingleLocalBootstrapConfig(8000, 1, "mistralai/Mistral-7B-Instruct-v0.2", "configs/lmcache_redis_sentinel_cachegen.yaml")
+def test_lmcache_redis_sentinel(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
+    config1 = CreateSingleLocalBootstrapConfig(8000, 1, model, "configs/lmcache_redis_sentinel_cachegen.yaml")
 
+    # Set vllm configuration for different models
+    ModelConfig(model, config1)
+    
     # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
     #lengths = [8192, 16384, 24576]
     lengths = [24576]
