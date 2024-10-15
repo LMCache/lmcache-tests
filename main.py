@@ -9,11 +9,14 @@ import pandas as pd
 from log import init_logger
 logger = init_logger(__name__)
 
-def wrapped_test_runner(test_func, output_file):
+def wrapped_test_runner(test_func, model, output_file):
     """
     Run the test case and save results to output file
     """
-    output_df = test_func()
+    if model is None:
+        output_df = test_func()
+    else:
+        output_df = test_func(model)
     if isinstance(output_df, pd.DataFrame):
         output_df.to_csv(output_file, index=False)
         logger.info("Saving output to " + output_file)
@@ -26,6 +29,7 @@ def main():
     parser.add_argument("-f", "--filter", help="Pattern to filter which functions to execute.", default=None)
     parser.add_argument("-l", "--list", help="List all functions in the module without executing them.", action="store_true")
     parser.add_argument("-o", "--output-dir", help="The directory to put the output file.", default="outputs/")
+    parser.add_argument("-m", "--model", help="The models of vllm for every functions.", default=None)
     args = parser.parse_args()
 
     if not os.path.exists(args.output_dir):
@@ -73,10 +77,16 @@ def main():
             print(name)
         sys.exit(0)
 
-    for func, name in zip(function_list, function_names):
-        logger.info("Executing function: " + name)
-        wrapped_test_runner(func, f"outputs/{name}.csv")
-
+    if args.model is None:
+        for func, name in zip(function_list, function_names):
+            logger.info("Executing function: " + name)
+            wrapped_test_runner(func, None, f"outputs/{name}.csv")
+    else:
+        model_prefix = args.model.split('/')[0]
+        for func, name in zip(function_list, function_names):
+            logger.info("Executing function: " + name)
+            wrapped_test_runner(func, args.model, f"outputs/{name}_{model_prefix}.csv")
+    
 if __name__ == "__main__":
     main()
 

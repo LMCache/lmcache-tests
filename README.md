@@ -61,7 +61,7 @@ tail -f /tmp/8000-stdout.log
 
 `main.py` is the entrypoint to execute the test functions:
 ```
-usage: main.py [-h] [-f FILTER] [-l] [-o OUTPUT_DIR] filepath
+usage: main.py [-h] [-f FILTER] [-l] [-o OUTPUT_DIR] [-m MODEL] filepath
 
 Execute all functions in a given Python file.
 
@@ -75,6 +75,8 @@ options:
   -l, --list            List all functions in the module without executing them.
   -o OUTPUT_DIR, --output-dir OUTPUT_DIR
                         The directory to put the output file.
+  -m MODEL, --model MODEL           
+                        The models of vllm for every functions.
 ```
 
 Here are some examples:
@@ -88,6 +90,9 @@ python3 main.py tests/tests.py -l
 
 # Run some specific tests that match the given pattern (e.g., containing 'cachegen')
 python3 main.py tests/tests.py -f cachegen
+
+# Run all the test functions defined in 'tests/tests.py' with llama
+python3 main.py tests/tests.py -m "meta-llama/Llama-3.1-8B-Instruct"
 ```
 
 ### 2.3 Output parsing
