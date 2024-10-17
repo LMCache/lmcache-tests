@@ -8,7 +8,7 @@ import openai
 from configs import BootstrapConfig, WorkloadConfig, Usecase
 from test_cases import TestCase
 from bootstrapper import CreateBootstrapper, Bootstrapper, LMCacheServerManager
-from workload import CreateWorkloadGenerator, Request
+from workload import CreateWorkloadGenerator, Request, MultiTurnWorkloadGenerator
 from utils import read_gpu_memory
 
 import log
@@ -22,6 +22,14 @@ class ExperimentResult:
     TTFT: float
     throughput: float
 
+@dataclass
+class ExperimentResultWithOutput:
+    timestamp: str
+    engine_id: int
+    request_id: int
+    TTFT: float
+    throughput: float
+    messages: str
 
 class RequestExecutor:
     def __init__(self):
@@ -41,7 +49,7 @@ class RequestExecutor:
     def execute_one_request(
             self, 
             client_id: int, 
-            expr_id: int, 
+            request_id: int, 
             request: Request, 
             client: openai.Client, 
             model: str,
@@ -51,7 +59,22 @@ class RequestExecutor:
         """
         ttft, thp = execute_openai_request(request, model, client)
         logger.info(f"Request completed, TTFT = {ttft}, throughput = {thp}")
-        queue.put(ExperimentResult(request.timestamp, client_id, expr_id, ttft, thp))
+        queue.put(ExperimentResult(request.timestamp, client_id, request_id, ttft, thp))
+
+    def execute_one_request_with_output(
+            self, 
+            client_id: int, 
+            request_id: int, 
+            request: Request, 
+            client: openai.Client, 
+            model: str,
+            queue: multiprocessing.Queue) -> Tuple[float, float]:
+        """
+        Execute the request and put the result into the queue
+        """
+        ttft, thp, messages = execute_openai_request_with_output(request, model, client)
+        logger.info(f"Request completed, TTFT = {ttft}, throughput = {thp}")
+        queue.put(ExperimentResultWithOutput(request.timestamp, client_id, request_id, ttft, thp, messages))
 
     def execute_all(self) -> List[ExperimentResult]:
         """
@@ -70,6 +93,39 @@ class RequestExecutor:
                 # Execute the request by a new process
                 process = multiprocessing.Process(
                         target = self.execute_one_request, 
+                        args=(client_id, request_id, request, client, model, queue))
+                process.start()
+                processes.append(process)
+
+            # Wait for all the processes to finish
+            for process in processes:
+                process.join()
+
+        except Exception as e:
+            logger.error(f"Exception happend when sending request: {e}")
+            for process in processes:
+                process.terminate()
+            return []
+
+        return [queue.get() for _ in self.pending_requests]
+    
+    def execute_all_with_output(self) -> List[ExperimentResultWithOutput]: 
+        """
+        Returns the list of expr results
+        """
+        queue = multiprocessing.Queue()
+        start_time = time.time()
+        processes = []
+        try:
+            for client_id, request_id, request, client, model in self.pending_requests:
+                already_elapsed = time.time() - start_time
+                # Wait for the request to be ready
+                wait_time = request.timestamp - already_elapsed
+                if wait_time > 0:
+                    time.sleep(wait_time)
+                # Execute the request by a new process
+                process = multiprocessing.Process(
+                        target = self.execute_one_request_with_output, 
                         args=(client_id, request_id, request, client, model, queue))
                 process.start()
                 processes.append(process)
@@ -146,6 +202,54 @@ def execute_openai_request(request: Request, model: str, client: openai.Client) 
 
     return ttft, throughput
 
+def execute_openai_request_with_output(request: Request, model: str, client: openai.Client) -> Tuple[float, float, str]:
+    """
+    Execute a single request to the OpenAI engine
+    Returns: TTFT (seconds) and throughput (tokens per second)
+    """
+
+    messages = [{
+        "role": "user",
+        "content": f"{request.context} {request.question}"
+        }]
+
+    #import random
+    #t = random.randint(2, 8)
+    #time.sleep(t)
+    #return t, t
+
+    
+    try:
+        logger.debug("Issusing a new request...")
+        chat_completion = client.chat.completions.create(
+                messages = messages,
+                model = model,
+                temperature = 0,
+                stream = True,
+                max_tokens = 2000,
+            )
+
+        start_time = time.perf_counter()
+        first_token_time = None
+        ntokens = 0
+        messages = []
+        for chunk in chat_completion:
+            chunk_message = chunk.choices[0].delta.content
+            if chunk_message is not None:
+                if first_token_time is None:
+                    first_token_time = time.perf_counter()
+                messages.append(chunk_message)
+                ntokens += 1
+        end_time = time.perf_counter()
+
+        ttft = first_token_time - start_time
+        throughput = ntokens / (end_time - first_token_time)
+        logger.debug(f"Response: {''.join(messages)}")
+    except Exception as e:
+        logger.error(f"OpenAI request failed: {e}")
+        return -1, -1
+
+    return ttft, throughput, f"{''.join(messages)}"
 
 def run_experiment(
         workload_config: WorkloadConfig, 
@@ -216,27 +320,114 @@ def run_experiment(
 
     return results, gpu_usage
 
+def run_multi_turn_experiment(
+        workload_config: WorkloadConfig, 
+        usecase: Usecase, 
+        engine_configs: List[BootstrapConfig]) -> List[ExperimentResultWithOutput]:
+    """
+    Run a multi turn experiment: 
+    - Bootstrap the serving bootstrappers
+    - Create workload generator for each engine
+    - Wait for engine ready
+    - (loop) Generate workload and send requests
+    - Close the bootstrappers
+
+    Returns:
+        - None if the experiment failed
+        - <workload desc> <timestamp> <engine id> <request id> <TTFT> <throughput> <GPU mem util>
+    """
+    def cleanup(bootstrappers: List[Bootstrapper]):
+        logger.info("Cleanning up the engine processes")
+        for bootstrapper in bootstrappers:
+            bootstrapper.close()
+        LMCacheServerManager.close_servers()
+
+    logger.info(f"Running experiment: {workload_config.desc()} {usecase}")
+
+    # Create the workloads
+    workload_generators = [MultiTurnWorkloadGenerator(workload_config) for _ in engine_configs]
+
+    # Start the serving engine
+    bootstrappers = [CreateBootstrapper(config) for config in engine_configs]
+    for bootstrapper in bootstrappers:
+        bootstrapper.start()
+
+    try:
+        # Wait for the engines to be ready
+        for bootstrapper in bootstrappers:
+            ready = bootstrapper.wait_until_ready(timeout = 300)
+            if not ready:
+                logger.error(f"Engine {bootstrapper} is not ready")
+                cleanup(bootstrappers)
+                return
+
+        # Create the clients
+        clients = [create_openai_client(config.vllm_config.port) for config in engine_configs]
+        models = [config.vllm_config.model for config in engine_configs]
+
+        # Execute the requests
+        executor = RequestExecutor()
+
+        # Generation and execution in multi turns (hard-coded 5 turns)
+        results = []
+        gpu_usage = []
+        for i in range(5):
+            workloads = [generator.generate() for generator in workload_generators]
+            executor.schedule_requests(workloads, clients, models)
+            results.append(executor.execute_all_with_output())
+            gpu_usage.append(read_gpu_memory())
+            for idx, generator in enumerate(workload_generators):
+                generator.offset += 1 / workload_config.qps
+                generator.store(f"{workloads[idx][0].context} {workloads[idx][0].question}")
+                generator.store(results[i][0].messages)
+
+    except Exception as e:
+        logger.error(f"Experiment failed: {e}")
+        cleanup(bootstrappers)
+        return None
+
+    finally:
+        # Cleanup
+        cleanup(bootstrappers)
+
+    return results, gpu_usage
+
 def run_test_case(case: TestCase) -> pd.DataFrame:
     """
     Run a single test case
     """
     dfs = []
     for expr_id, (workload_cfg, usecase) in enumerate(case.experiments):
-        results = run_experiment(workload_cfg, usecase, case.engines)
+        if usecase == Usecase.MULTI:
+            results = run_multi_turn_experiment(workload_cfg, usecase, case.engines)
+        else:
+            results = run_experiment(workload_cfg, usecase, case.engines)
         if results is None:
             logger.error(f"Experiment failed: {workload_cfg.desc()} {usecase}")
             continue
         else:
             results, gpu_usage = results
 
-        dataframe = pd.DataFrame([item.__dict__ for item in results])
-        dataframe = dataframe.sort_values(by=["timestamp", "engine_id", "request_id"])
-        dataframe["context_len"] = workload_cfg.context_length
-        dataframe["query_len"] = workload_cfg.query_length
-        #dataframe["workload"] = workload_cfg.desc()
-        dataframe["gpu_memory"] = gpu_usage
-        dataframe["expr_id"] = expr_id
-        dfs.append(dataframe)
+        if usecase == Usecase.MULTI:
+            for idx, result in enumerate(results):
+                dataframe = pd.DataFrame([item.__dict__ for item in result])
+                dataframe = dataframe.drop(columns=['messages'])
+                dataframe = dataframe.sort_values(by=["timestamp", "engine_id", "request_id"])
+                dataframe["context_len"] = workload_cfg.context_length
+                dataframe["query_len"] = workload_cfg.query_length
+                #dataframe["workload"] = workload_cfg.desc()
+                dataframe["gpu_memory"] = gpu_usage[idx]
+                dataframe["expr_id"] = "-"
+                dfs.append(dataframe)
+        else:
+            dataframe = pd.DataFrame([item.__dict__ for item in results])
+            dataframe = dataframe.sort_values(by=["timestamp", "engine_id", "request_id"])
+            dataframe["context_len"] = workload_cfg.context_length
+            dataframe["query_len"] = workload_cfg.query_length
+            #dataframe["workload"] = workload_cfg.desc()
+            dataframe["gpu_memory"] = gpu_usage
+            dataframe["expr_id"] = expr_id
+            dfs.append(dataframe)
     return pd.concat(dfs)
 
 def run_test_cases(cases: List[TestCase]) -> pd.DataFrame:

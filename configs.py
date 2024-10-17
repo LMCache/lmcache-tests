@@ -14,10 +14,12 @@ class Usecase(Enum):
     - DUMMY: the dummy use case, for basic testing
     - PREFIX_REUSE: the prefix reuse use case
     - RAG: the RAG use case
+    - MULTI: the multi-turn conversation use case
     """
     DUMMY = 1
     PREFIX_REUSE = 2
     RAG = 3
+    MULTI = 4
 
 @dataclass
 class WorkloadConfig(Config):
