@@ -24,6 +24,9 @@ def wrapped_test_runner(test_func, model, output_file):
         logger.warn(f"Output is {type(output)}, not a DataFrame. Skipping saving to file.")
 
 def main():
+    
+    os.environ["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
+    
     parser = argparse.ArgumentParser(description="Execute all functions in a given Python file.")
     parser.add_argument("filepath", help="The Python file to execute functions from (include subfolders if any).")
     parser.add_argument("-f", "--filter", help="Pattern to filter which functions to execute.", default=None)
