@@ -68,6 +68,17 @@ def ModelConfig(model: str, BootstrapConfig) -> None:
 
 
 ##### Test cases #####
+def simple_test(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
+    config = CreateSingleLocalBootstrapConfig(8002, 0, model, "configs/lmcache_local_cpu.yaml")
+    ModelConfig(model, config)
+    lengths = [8192]
+    experiments = [CreateDummyExperiment(3, length ) for length in lengths]
+    test_case = TestCase(
+            experiments = experiments,
+            engines = [config])
+    final_result = run_test_case(test_case)
+    return final_result
+
 def offline_test(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
     user_name=os.popen('whoami').read()[:-1]
     stdout_log = os.path.join(f"/tmp/{user_name}-65431-stdout.log")
