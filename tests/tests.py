@@ -167,7 +167,7 @@ def test_lmcache_local_gpu(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.D
     ModelConfig(model, config1)
     ModelConfig(model, config2)
 
-    # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
+    # Experiments: 8K, 16K, 24K shared context, each experiments has 10 queries
     lengths = [8192, 16384, 24576]
     experiments = [CreateDummyExperiment(5, length) for length in lengths]
 
