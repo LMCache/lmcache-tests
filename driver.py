@@ -422,7 +422,10 @@ def run_test_case(case: TestCase) -> pd.DataFrame:
         else:
             dataframe = pd.DataFrame([item.__dict__ for item in results])
             dataframe = dataframe.sort_values(by=["timestamp", "engine_id", "request_id"])
-            dataframe["context_len"] = workload_cfg.context_length
+            if usecase == Usecase.VARY:
+                dataframe["context_len"] = workload_cfg.context_length[:len(dataframe)]
+            else:
+                dataframe["context_len"] = workload_cfg.context_length
             dataframe["query_len"] = workload_cfg.query_length
             #dataframe["workload"] = workload_cfg.desc()
             dataframe["gpu_memory"] = gpu_usage

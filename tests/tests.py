@@ -49,6 +49,16 @@ def CreateMultiTurnExperiment(num_requests, context_length, gap_between_requests
     cfg = WorkloadConfig(qps, duration, context_length, 16, offset = 0)
     return (cfg, Usecase.MULTI)
 
+def CreateVaryLengthExperiment(num_requests, context_length, gap_between_requests = 8):
+    """
+    Create some requests for variable length usecase
+    The query length will be 16
+    """
+    qps = 1 / gap_between_requests
+    duration = num_requests * gap_between_requests
+    cfg = WorkloadConfig(qps, duration, context_length, 16, offset = 0)
+    return (cfg, Usecase.VARY)
+
 def ModelConfig(model: str, BootstrapConfig) -> None:
     """
     Set configuration for bootstrap for different models
@@ -71,8 +81,10 @@ def ModelConfig(model: str, BootstrapConfig) -> None:
 def simple_test(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
     config = CreateSingleLocalBootstrapConfig(8002, 0, model, "configs/lmcache_local_cpu.yaml")
     ModelConfig(model, config)
-    lengths = [8192]
-    experiments = [CreateDummyExperiment(3, length ) for length in lengths]
+    # lengths = [8192]
+    # experiments = [CreateDummyExperiment(3, length ) for length in lengths]
+    lengths = [12288, 24576, 24576]
+    experiments = [CreateVaryLengthExperiment(len(lengths), lengths )]
     test_case = TestCase(
             experiments = experiments,
             engines = [config])
@@ -94,9 +106,11 @@ def offline_test(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
     return None
 
 def test_cache_compatibility(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
-    # Start two servers with lmcache
+    # Start two servers with lmcache enabling prefix caching
     config1 = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_local_cpu.yaml")
     config2 = CreateSingleLocalBootstrapConfig(8001, 1, model, "configs/lmcache_local_cpu.yaml")
+    config1.vllm_optional_config["enable_prefix_caching"] = ""
+    config2.vllm_optional_config["enable_prefix_caching"] = ""
 
     # Set vllm configuration for different models
     ModelConfig(model, config1)
@@ -121,7 +135,8 @@ def test_cache_compatibility(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd
 def test_chunk_prefill(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
     # Start two servers with lmcache
     config1 = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_local_cpu.yaml")
-    config2 = CreateSingleLocalBootstrapConfig(8001, 1, model, "configs/lmcache_local_cpu_chunk.yaml")
+    config2 = CreateSingleLocalBootstrapConfig(8001, 1, model, "configs/lmcache_local_cpu.yaml")
+    config2.vllm_optional_config["enable_chunked_prefill"] = True
 
     # Set vllm configuration for different models
     ModelConfig(model, config1)
@@ -139,9 +154,50 @@ def test_chunk_prefill(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataF
     final_result = run_test_case(test_case)
     return final_result
 
+def test_chunk_and_prefix(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
+    # Start two servers with lmcache
+    config = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_local_cpu.yaml")
+    config.vllm_optional_config["enable_chunked_prefill"] = True
+    config.vllm_optional_config["enable_prefix_caching"] = ""
+
+    # Set vllm configuration for different models
+    ModelConfig(model, config)
+
+    # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
+    lengths = [8192, 16384, 24576]
+    experiments = [CreateDummyExperiment(5, length ) for length in lengths]
+
+    test_case = TestCase(
+            experiments = experiments,
+            engines = [config])
+
+    # Run test case
+    final_result = run_test_case(test_case)
+    return final_result
+
+def test_vary_length_workload(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
+    # Start two servers with lmcache
+    config = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_local_cpu.yaml")
+
+    # Set vllm configuration for different models
+    ModelConfig(model, config)
+
+    # One experiments: context length sequence 12K, 24K, 24K
+    lengths = [12288, 24576, 24576]
+    experiments = [CreateVaryLengthExperiment(len(lengths), lengths )]
+
+    test_case = TestCase(
+            experiments = experiments,
+            engines = [config])
+
+    # Run test case
+    final_result = run_test_case(test_case)
+    return final_result
+
 def test_multi_turn(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
     # Start one server: with lmcache; for contrast (not saving decode KV Cache), change save_decode_cache to false
-    config = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_local_cpu_multi.yaml")
+    config = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_local_cpu.yaml")
+    config.vllm_optional_config["save_decode_cache"] = True
 
     # Set vllm configuration for different models
     ModelConfig(model, config)
@@ -189,8 +245,7 @@ def test_lmcache_local_cpu(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.D
     ModelConfig(model, config2)
 
     # Experiments: 8K, 16K, 24K shared context, each experiments has 10 queries
-    # lengths = [8192, 16384, 24576]
-    lengths = [6538]
+    lengths = [8192, 16384, 24576]
     experiments = [CreateDummyExperiment(10, length ) for length in lengths]
 
     test_case = TestCase(

@@ -25,6 +25,8 @@ def CreateWorkloadGenerator(config: WorkloadConfig, usecase: Usecase) -> Workloa
             return DumbWorkloadGenerator(config)
         case Usecase.MULTI:
             return MultiTurnWorkloadGenerator(config)
+        case Usecase.VARY:
+            return VaryLengthWorkloadGenerator(config)
         case _:
             raise NotImplementedError(f"Usecase {usecase} not implemented")
 
@@ -42,6 +44,41 @@ class DumbWorkloadGenerator(WorkloadGenerator):
 
     def generate_context(self) -> str:
         return self.dummy_context * (self.config.context_length // self.estimated_num_tokens_context)
+
+    def generate_question(self, index: int) -> str:
+        if self.config.query_length - self.estimated_num_tokens_question > 0:
+            question_prefix = self.dummy_context * ((self.config.query_length - self.estimated_num_tokens_question) // self.estimated_num_tokens_context)
+        return f"Index {index}. {question_prefix} Question: How are you doing today?"
+
+    def generate(self) -> List[Request]:
+        num_requests = int(self.config.duration * self.config.qps)
+        
+        ret = []
+        for i in range(num_requests):
+            timestamp = i / self.config.qps + self.config.offset
+            ret.append(Request(
+                timestamp=timestamp,
+                context=self.generate_context(),
+                question=self.generate_question(i)
+            ))
+
+        return ret
+    
+class VaryLengthWorkloadGenerator(WorkloadGenerator):
+    """
+    Generate vary length requests from the same context.
+    """
+    def __init__(self, config: WorkloadConfig):
+        super().__init__(config)
+        self.dummy_context = "This is some dummy text. "
+        self.estimated_num_tokens_context = utils.estimate_num_tokens(self.dummy_context)
+        dummy_question = "Index 0. Question: How are you doing today?"
+        self.estimated_num_tokens_question = utils.estimate_num_tokens(dummy_question)
+        self.index = -1
+
+    def generate_context(self) -> str:
+        self.index += 1
+        return self.dummy_context * (self.config.context_length[self.index] // self.estimated_num_tokens_context)
 
     def generate_question(self, index: int) -> str:
         if self.config.query_length - self.estimated_num_tokens_question > 0:

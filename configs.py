@@ -1,4 +1,4 @@
-from typing import Optional, Dict
+from typing import Optional, Dict, Union, List
 from enum import Enum
 from dataclasses import dataclass, asdict
 import json
@@ -15,11 +15,13 @@ class Usecase(Enum):
     - PREFIX_REUSE: the prefix reuse use case
     - RAG: the RAG use case
     - MULTI: the multi-turn conversation use case
+    - VARY: the variable length use case
     """
     DUMMY = 1
     PREFIX_REUSE = 2
     RAG = 3
     MULTI = 4
+    VARY = 5
 
 @dataclass
 class WorkloadConfig(Config):
@@ -36,7 +38,7 @@ class WorkloadConfig(Config):
     duration: float
 
     # Number of tokens in the context (approximate number)
-    context_length: int
+    context_length: Union[int, List[int]]
 
     # Number of tokens in the suffix question
     query_length: int
