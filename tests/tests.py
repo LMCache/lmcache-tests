@@ -197,7 +197,6 @@ def test_vary_length_workload(model = "mistralai/Mistral-7B-Instruct-v0.2") -> p
 def test_multi_turn(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
     # Start one server: with lmcache; for contrast (not saving decode KV Cache), change save_decode_cache to false
     config = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_local_cpu.yaml")
-    config.vllm_optional_config["save_decode_cache"] = True
 
     # Set vllm configuration for different models
     ModelConfig(model, config)
