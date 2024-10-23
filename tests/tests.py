@@ -155,7 +155,7 @@ def test_chunk_prefill(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataF
     return final_result
 
 def test_chunk_and_prefix(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
-    # Start two servers with lmcache
+    # Start one server with lmcache
     config = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_local_cpu.yaml")
     config.vllm_optional_config["enable_chunked_prefill"] = True
     config.vllm_optional_config["enable_prefix_caching"] = ""
@@ -333,7 +333,7 @@ def test_lmcache_cachegen_distributed(model = "mistralai/Mistral-7B-Instruct-v0.
     # Set vllm configuration for different models
     ModelConfig(model, config)
 
-    # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
+    # Experiments: 16K, 24K shared context, each experiments has 10 queries
     lengths = [16384, 24576]
     experiments = [CreateDummyExperiment(10, length, gap_between_requests=8) for length in lengths]
 
