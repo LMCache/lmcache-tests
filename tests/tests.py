@@ -100,7 +100,7 @@ def offline_test(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
     pattern = "Server started at"
     run_command("lmcache_server localhost 65431", stdout_log, stderr_log, detach=True)
     time.sleep(10)
-    os.environ['LMCACHE_CONFIG_FILE'] = "/local/shaotingf/lmcache1/lmcache-tests/configs/example_offline.yaml"
+    os.environ['LMCACHE_CONFIG_FILE'] = "/local/shaotingf/lmcache1/lmcache-tests/configs/example.yaml"
     os.environ['CUDA_VISIBLE_DEVICES'] = '0'
     run_command("python3 tests/offline_test.py", stdout_log2, stderr_log2, detach=False)
     return None
@@ -110,15 +110,10 @@ def test_cache_compatibility(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd
     config1 = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_local_cpu.yaml")
     config2 = CreateSingleLocalBootstrapConfig(8001, 1, model, "configs/lmcache_local_cpu.yaml")
     config1.vllm_optional_config["enable_prefix_caching"] = ""
-    config2.vllm_optional_config["enable_prefix_caching"] = ""
 
     # Set vllm configuration for different models
     ModelConfig(model, config1)
     ModelConfig(model, config2)
-
-    # Select different VLLM's internal prefix caching size
-    config1.vllm_config.gpu_memory_utilization = 0.5
-    config2.vllm_config.gpu_memory_utilization = 0.8
 
     # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
     lengths = [8192, 16384, 24576]
@@ -135,7 +130,8 @@ def test_cache_compatibility(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd
 def test_chunk_prefill(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
     # Start two servers with lmcache
     config1 = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_local_cpu.yaml")
-    config2 = CreateSingleLocalBootstrapConfig(8001, 1, model, "configs/lmcache_local_cpu.yaml")
+    config2 = CreateSingleLocalBootstrapConfig(8001, 1, model, None)
+    config1.vllm_optional_config["enable_chunked_prefill"] = True
     config2.vllm_optional_config["enable_chunked_prefill"] = True
 
     # Set vllm configuration for different models
