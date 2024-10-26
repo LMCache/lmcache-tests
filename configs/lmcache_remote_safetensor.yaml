@@ -5,6 +5,3 @@ remote_serde: "safetensor"
 
 # Whether retrieve() is pipelined or not
 pipelined_backend: False
-
-# Whether saving decode KV cache to boost multi-turn conversation or not
-save_decode_cache: True

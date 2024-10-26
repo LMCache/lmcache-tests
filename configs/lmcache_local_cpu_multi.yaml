@@ -1,9 +1,8 @@
 chunk_size: 256
 local_device: "cpu"
-remote_url: "lm://localhost:65431"
-remote_serde: "cachegen"
 
 # Whether retrieve() is pipelined or not
 pipelined_backend: False
 
-gpu_memory_utilization: 0.8
+# Whether saving decode KV cache to boost multi-turn conversation or not
+save_decode_cache: True
