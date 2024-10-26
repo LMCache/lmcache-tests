@@ -126,7 +126,7 @@ def test_cache_compatibility(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd
     return final_result
 
 def test_chunk_prefill(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
-    # Start two servers with lmcache
+    # Start two servers: with lmcache and without lmcache
     config1 = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_local_cpu.yaml")
     config2 = CreateSingleLocalBootstrapConfig(8001, 1, model, None)
     config1.vllm_optional_config["enable_chunked_prefill"] = True
@@ -170,7 +170,7 @@ def test_chunk_and_prefix(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.Da
     return final_result
 
 def test_vary_length_workload(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
-    # Start two servers with lmcache
+    # Start one server with lmcache
     config = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_local_cpu.yaml")
 
     # Set vllm configuration for different models
