@@ -9,7 +9,7 @@ def plot_df(df, x, y, group, kind, **kwargs):
     if group is not None:
         for v, g in df.groupby(group):
             g.plot(x = x, y = y, kind = kind, ax=ax, label=f"{group} = {v}", marker='o', grid=True, **kwargs)
-        ax.legend(["enable_prefix_caching=True", "enable_prefix_caching=False"])
+        ax.legend(["engine 0", "engine 1"])
     else:
         df.plot(x = x, y = y, kind = kind, ax=ax, marker='o', grid=True, **kwargs)
     if "ylabel" not in kwargs:
@@ -56,4 +56,4 @@ def process_result_file(filename):
 
 
 if __name__ == "__main__":
-    process_result_file("test_vary_length_workload.csv")
+    process_result_file("test_lmcache_local_cpu.csv")
