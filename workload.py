@@ -74,11 +74,12 @@ class VaryLengthWorkloadGenerator(WorkloadGenerator):
         self.estimated_num_tokens_context = utils.estimate_num_tokens(self.dummy_context)
         dummy_question = "Index 0. Question: How are you doing today?"
         self.estimated_num_tokens_question = utils.estimate_num_tokens(dummy_question)
-        self.index = -1
+        self.index = 0
 
     def generate_context(self) -> str:
         self.index += 1
-        return self.dummy_context * (self.config.context_length[self.index] // self.estimated_num_tokens_context)
+        # The context length pattern: [a 2a 2a 3a 3a 4a 4a ...]
+        return self.dummy_context * (self.config.context_length * ((self.index // 2) + 1) // self.estimated_num_tokens_context)
 
     def generate_question(self, index: int) -> str:
         if self.config.query_length - self.estimated_num_tokens_question > 0:

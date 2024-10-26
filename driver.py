@@ -423,7 +423,7 @@ def run_test_case(case: TestCase) -> pd.DataFrame:
             dataframe = pd.DataFrame([item.__dict__ for item in results])
             dataframe = dataframe.sort_values(by=["timestamp", "engine_id", "request_id"])
             if usecase == Usecase.VARY:
-                dataframe["context_len"] = workload_cfg.context_length[:len(dataframe)]
+                dataframe["context_len"] = [workload_cfg.context_length * (idx // 2 + 1) for idx in range(1, len(dataframe)+1)]
             else:
                 dataframe["context_len"] = workload_cfg.context_length
             dataframe["query_len"] = workload_cfg.query_length

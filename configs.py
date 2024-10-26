@@ -38,7 +38,7 @@ class WorkloadConfig(Config):
     duration: float
 
     # Number of tokens in the context (approximate number)
-    context_length: Union[int, List[int]]
+    context_length: int
 
     # Number of tokens in the suffix question
     query_length: int

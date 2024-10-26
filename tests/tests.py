@@ -179,8 +179,8 @@ def test_vary_length_workload(model = "mistralai/Mistral-7B-Instruct-v0.2") -> p
     ModelConfig(model, config)
 
     # One experiments: context length sequence 12K, 24K, 24K
-    lengths = [12288, 24576, 24576]
-    experiments = [CreateVaryLengthExperiment(len(lengths), lengths )]
+    lengths = [12288]
+    experiments = [CreateVaryLengthExperiment(3, length ) for length in lengths]
 
     test_case = TestCase(
             experiments = experiments,
