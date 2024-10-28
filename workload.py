@@ -19,14 +19,14 @@ class WorkloadGenerator(metaclass=abc.ABCMeta):
     def generate(self) -> List[Request]:
         pass
 
-def CreateWorkloadGenerator(config: WorkloadConfig, usecase: Usecase) -> WorkloadGenerator:
+def CreateWorkloadGenerator(config: WorkloadConfig, usecase: Usecase, max_context_length: int) -> WorkloadGenerator:
     match usecase:
         case Usecase.DUMMY:
-            return DumbWorkloadGenerator(config)
+            return DumbWorkloadGenerator(config, max_context_length)
         case Usecase.MULTI:
             return MultiTurnWorkloadGenerator(config)
         case Usecase.VARY:
-            return VaryLengthWorkloadGenerator(config)
+            return VaryLengthWorkloadGenerator(config, max_context_length)
         case _:
             raise NotImplementedError(f"Usecase {usecase} not implemented")
 
@@ -35,15 +35,17 @@ class DumbWorkloadGenerator(WorkloadGenerator):
     """
     Generate dummy requests with the same context and question.
     """
-    def __init__(self, config: WorkloadConfig):
+    def __init__(self, config: WorkloadConfig, max_context_length: int):
         super().__init__(config)
         self.dummy_context = "This is some dummy text. "
         self.estimated_num_tokens_context = utils.estimate_num_tokens(self.dummy_context)
         dummy_question = "Index 0. Question: How are you doing today?"
         self.estimated_num_tokens_question = utils.estimate_num_tokens(dummy_question)
+        self.max_context_length = max_context_length
 
     def generate_context(self) -> str:
-        return self.dummy_context * (self.config.context_length // self.estimated_num_tokens_context)
+        context_length = max(self.max_context_length - self.config.query_length, self.config.context_length)
+        return self.dummy_context * (context_length // self.estimated_num_tokens_context)
 
     def generate_question(self, index: int) -> str:
         if self.config.query_length - self.estimated_num_tokens_question > 0:
@@ -68,18 +70,21 @@ class VaryLengthWorkloadGenerator(WorkloadGenerator):
     """
     Generate vary length requests from the same context.
     """
-    def __init__(self, config: WorkloadConfig):
+    def __init__(self, config: WorkloadConfig, max_context_length: int):
         super().__init__(config)
         self.dummy_context = "This is some dummy text. "
         self.estimated_num_tokens_context = utils.estimate_num_tokens(self.dummy_context)
         dummy_question = "Index 0. Question: How are you doing today?"
         self.estimated_num_tokens_question = utils.estimate_num_tokens(dummy_question)
         self.index = 0
+        self.max_context_length = max_context_length
 
     def generate_context(self) -> str:
         self.index += 1
         # The context length pattern: [a 2a 2a 3a 3a 4a 4a ...]
-        return self.dummy_context * (self.config.context_length * ((self.index // 2) + 1) // self.estimated_num_tokens_context)
+        context_length = self.config.context_length * ((self.index // 2) + 1)
+        context_length = max(self.max_context_length - self.config.query_length, context_length)
+        return self.dummy_context * (context_length // self.estimated_num_tokens_context)
 
     def generate_question(self, index: int) -> str:
         if self.config.query_length - self.estimated_num_tokens_question > 0:

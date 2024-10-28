@@ -7,7 +7,7 @@ from driver import run_test_case, run_test_cases
 from test_cases import TestCase
 from configs import BootstrapConfig, WorkloadConfig, Usecase
 from configs import VLLMConfig, VLLMOptionalConfig, LMCacheConfig, EngineType
-from utils import run_command
+from utils import run_command, get_max_context_length
 
 ##### Helper functions #####
 def CreateSingleLocalBootstrapConfig(
@@ -72,7 +72,7 @@ def ModelConfig(model: str, BootstrapConfig) -> None:
             BootstrapConfig.vllm_optional_config["trust_remote_code"] = ""
         case "meta-llama/Llama-3.1-8B-Instruct":
             BootstrapConfig.vllm_optional_config["enable_chunked_prefill"] = False
-            BootstrapConfig.vllm_optional_config["max_model_len"] = 32768
+            BootstrapConfig.vllm_optional_config["max_model_len"] = get_max_context_length(model)
         case _:
             pass
 

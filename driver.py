@@ -9,7 +9,7 @@ from configs import BootstrapConfig, WorkloadConfig, Usecase
 from test_cases import TestCase
 from bootstrapper import CreateBootstrapper, Bootstrapper, LMCacheServerManager
 from workload import CreateWorkloadGenerator, Request, MultiTurnWorkloadGenerator
-from utils import read_gpu_memory
+from utils import read_gpu_memory, get_max_context_length
 
 import log
 logger = log.init_logger(__name__)
@@ -143,14 +143,30 @@ class RequestExecutor:
         return [queue.get() for _ in self.pending_requests]
 
 
-def create_openai_client(port: int) -> openai.Client:
+def create_openai_client(port: int, model) -> openai.Client:
     openai_api_key = "EMPTY"
     # TODO: currently we assume the engines are open to localhost. Need to support different hostname in the future
     openai_api_base = f"http://localhost:{port}/v1"
-    return openai.OpenAI(
+
+    client = openai.OpenAI(
         api_key=openai_api_key,
         base_url=openai_api_base,
     )
+
+    messages = [{
+        "role": "user",
+        "content": f"This is a warm up request" * 200
+        }]
+
+    chat_completion = client.chat.completions.create(
+        messages = messages,
+        model = model,
+        temperature = 0,
+        stream = False,
+        max_tokens = 1,
+    )
+
+    return client
 
 
 def execute_openai_request(request: Request, model: str, client: openai.Client) -> Tuple[float, float]:
@@ -187,7 +203,7 @@ def execute_openai_request(request: Request, model: str, client: openai.Client) 
         for chunk in chat_completion:
             chunk_message = chunk.choices[0].delta.content
             if chunk_message is not None:
-                if first_token_time is None:
+                if first_token_time is None and chunk_message != " " and chunk_message != "":
                     first_token_time = time.perf_counter()
                 messages.append(chunk_message)
                 ntokens += 1
@@ -236,7 +252,7 @@ def execute_openai_request_with_output(request: Request, model: str, client: ope
         for chunk in chat_completion:
             chunk_message = chunk.choices[0].delta.content
             if chunk_message is not None:
-                if first_token_time is None:
+                if first_token_time is None and chunk_message != " " and chunk_message != "":
                     first_token_time = time.perf_counter()
                 messages.append(chunk_message)
                 ntokens += 1
@@ -277,7 +293,9 @@ def run_experiment(
     logger.info(f"Running experiment: {workload_config.desc()} {usecase}")
 
     # Create the workloads
-    workload_generators = [CreateWorkloadGenerator(workload_config, usecase) for _ in engine_configs]
+    workload_generators = []
+    for engine_config in engine_configs:
+        workload_generators.append(CreateWorkloadGenerator(workload_config, usecase, get_max_context_length(engine_config.vllm_config.model)))
     workloads = [generator.generate() for generator in workload_generators]
 
 
@@ -296,7 +314,7 @@ def run_experiment(
                 return
 
         # Create the clients
-        clients = [create_openai_client(config.vllm_config.port) for config in engine_configs]
+        clients = [create_openai_client(config.vllm_config.port, config.vllm_config.model) for config in engine_configs]
         models = [config.vllm_config.model for config in engine_configs]
 
         # Execute the requests
@@ -362,7 +380,7 @@ def run_multi_turn_experiment(
                 return
 
         # Create the clients
-        clients = [create_openai_client(config.vllm_config.port) for config in engine_configs]
+        clients = [create_openai_client(config.vllm_config.port, config.vllm_config.model) for config in engine_configs]
         models = [config.vllm_config.model for config in engine_configs]
 
         # Execute the requests
