@@ -296,7 +296,7 @@ def test_lmcache_local_distributed(model = "mistralai/Mistral-7B-Instruct-v0.2")
     return final_result
 
 def test_lmcache_remote_cachegen(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
-    # Start two servers: with lmcache and without lmcache
+    # Start two servers
     config1 = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_remote_cachegen.yaml")
     config2 = CreateSingleLocalBootstrapConfig(8001, 1, model, "configs/lmcache_remote_cachegen_pipeline.yaml")
 
