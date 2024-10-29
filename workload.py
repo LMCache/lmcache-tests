@@ -44,7 +44,7 @@ class DumbWorkloadGenerator(WorkloadGenerator):
         self.max_context_length = max_context_length
 
     def generate_context(self) -> str:
-        context_length = max(self.max_context_length - self.config.query_length, self.config.context_length)
+        context_length = min(self.max_context_length - self.config.query_length, self.config.context_length)
         return self.dummy_context * (context_length // self.estimated_num_tokens_context)
 
     def generate_question(self, index: int) -> str:
@@ -83,7 +83,7 @@ class VaryLengthWorkloadGenerator(WorkloadGenerator):
         self.index += 1
         # The context length pattern: [a 2a 2a 3a 3a 4a 4a ...]
         context_length = self.config.context_length * ((self.index // 2) + 1)
-        context_length = max(self.max_context_length - self.config.query_length, context_length)
+        context_length = min(self.max_context_length - self.config.query_length, context_length)
         return self.dummy_context * (context_length // self.estimated_num_tokens_context)
 
     def generate_question(self, index: int) -> str:
