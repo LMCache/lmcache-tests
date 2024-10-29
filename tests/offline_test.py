@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 model_name = "mistralai/Mistral-7B-Instruct-v0.2"
-context_file = "/local/shaotingf/lmcache1/lmcache-tests/ffmpeg.txt"
-output_file = "/local/shaotingf/lmcache1/lmcache-tests/outputs/offline_inference_outputs.jsonl"
+context_file = "./ffmpeg.txt"
+output_file = "./outputs/offline_inference_outputs.jsonl"
 
 context_text = None
 with open(context_file, 'r') as f:
@@ -73,19 +73,17 @@ def append_outputs(output_file_name, outputs, context_length, time_taken):
     json_dict = {
         "user_inputs": user_inputs,
         "generated_texts": generated_texts,
-        "time in seconds": time_taken
+        "time in seconds": time_taken,
+        "context_length": context_length
     }
     with open(output_file_name, "a") as f:
         f.write(json.dumps(json_dict) + '\n')
 
-
-context_length = get_context_length(tokenizer, context_messages)
 # Create a sampling params object.
-sampling_params = SamplingParams(temperature=0.8, top_p=0.95, max_tokens=1) # Set to 1 for TTFT
-prompts = gen_prompts(tokenizer, context_messages, user_inputs_batch)
+sampling_params = SamplingParams(temperature=1, max_tokens=1) # Set to 1 for TTFT
 # Create an LLM.
 llm = LLM(model=model_name,
-          gpu_memory_utilization=0.8,
+          gpu_memory_utilization=0.6,
           enable_chunked_prefill=False,
           max_model_len=32768)
 
@@ -95,17 +93,27 @@ with open(output_file, "w") as f:
 
 # Generate texts from the prompts. The output is a list of RequestOutput objects
 # that contain the prompt, generated text, and other information.
+context_length = get_context_length(tokenizer, context_messages)
+prompts = gen_prompts(tokenizer, context_messages, user_inputs_batch)
 t1 = time.perf_counter()
 first_outputs = llm.generate(prompts, sampling_params)
 t2 = time.perf_counter()
 logger.info(f"\n\nFirst request Time: {t2 - t1} seconds\n\n")
 with open(output_file, "a") as f:
-    f.write(f"\n\nFirst request Time: {t2 - t1} seconds\n\n")
+    f.write(f"\n\nFirst request:\n\n")
 append_outputs(output_file, first_outputs, context_length, t2 - t1)
 
 for i in range(3):
+    t1 = time.perf_counter()
+    first_outputs = llm.generate(prompts, sampling_params)
+    t2 = time.perf_counter()
+    logger.info(f"\n\nSame request Time: {t2 - t1} seconds\n\n")
+    with open(output_file, "a") as f:
+        f.write(f"\n\nSame request:\n\n")
+    append_outputs(output_file, first_outputs, context_length, t2 - t1)
+
     # Generate random text to do full prefill.
-    context_messages_new = [
+    context_messages_random = [
         {
             "role": "user",
             "content": "I've got a document, "
@@ -116,27 +124,35 @@ for i in range(3):
             "content": "I've got your document"
         },
     ]
-    prompts_new = gen_prompts(tokenizer, context_messages_new, user_inputs_batch)
-    prompts_batch = prompts + prompts_new
-
-    t1 = time.perf_counter()
-    first_outputs = llm.generate(prompts, sampling_params)
-    t2 = time.perf_counter()
-    logger.info(f"\n\nSame request Time: {t2 - t1} seconds\n\n")
-    with open(output_file, "a") as f:
-        f.write(f"\n\nSame request Time: {t2 - t1} seconds\n\n")
-    append_outputs(output_file, first_outputs, context_length, t2 - t1)
+    context_length_random = get_context_length(tokenizer, context_messages_random)
+    prompts_random = gen_prompts(tokenizer, context_messages_random, user_inputs_batch)
     t3 = time.perf_counter()
-    second_outputs = llm.generate(prompts_new, sampling_params)
+    second_outputs = llm.generate(prompts_random, sampling_params)
     t4 = time.perf_counter()
     logger.info(f"\n\nRandom request Time: {t4 - t3} seconds\n\n")
     with open(output_file, "a") as f:
-        f.write(f"\n\nRandom request Time: {t4 - t3} seconds\n\n")
-    append_outputs(output_file, second_outputs, context_length, t4 - t3)
+        f.write(f"\n\nRandom request:\n\n")
+    append_outputs(output_file, second_outputs, context_length_random, t4 - t3)
+
+    # Generate new random text to do full prefill again. This time, batch the requests.
+    context_messages_random_new = [
+        {
+            "role": "user",
+            "content": "I've got a document, "
+            f"here's the content:```\n{shuffle_text(context_text)}\n```."
+        },
+        {
+            "role": "assistant",
+            "content": "I've got your document"
+        },
+    ]
+    context_length_random_new = get_context_length(tokenizer, context_messages_random_new)
+    prompts_random_new = gen_prompts(tokenizer, context_messages_random_new, user_inputs_batch)
+    prompts_batch = prompts + prompts_random_new
     t5 = time.perf_counter()
     third_outputs = llm.generate(prompts_batch, sampling_params)
     t6 = time.perf_counter()
     logger.info(f"\n\nBatched request Time: {t6 - t5} seconds\n\n")
     with open(output_file, "a") as f:
-        f.write(f"\n\nBatched request Time: {t6 - t5} seconds\n\n")
-    append_outputs(output_file, third_outputs, context_length, t6 - t5)
+        f.write(f"\n\nBatched request:\n\n")
+    append_outputs(output_file, third_outputs, context_length+context_length_random, t6 - t5)

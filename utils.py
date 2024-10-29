@@ -92,7 +92,7 @@ def estimate_num_tokens(text: str) -> int:
     if not hasattr(estimate_num_tokens, "tokenizer"):
         os.environ["TOKENIZERS_PARALLELISM"] = "false"
         # TODO: do not hard-code tokenizer 
-        estimate_num_tokens.tokenizer = AutoTokenizer.from_pretrained("lmsys/longchat-7b-16k")
+        estimate_num_tokens.tokenizer = AutoTokenizer.from_pretrained("mistralai/Mistral-7B-Instruct-v0.2")
 
     return len(estimate_num_tokens.tokenizer.tokenize(text))
 
@@ -104,3 +104,14 @@ def read_gpu_memory():
     result = subprocess.run(command, shell=True, stdout=subprocess.PIPE)
     return json.dumps(
             {f"gpu-{id}":int(x) for id, x in enumerate(result.stdout.decode("utf-8").strip().split("\n"))})
+
+def get_max_context_length(model: str) -> int:
+    match model:
+        case "mistralai/Mistral-7B-Instruct-v0.2":
+            return 32768
+        case "THUDM/glm-4-9b-chat":
+            return 32768
+        case "meta-llama/Llama-3.1-8B-Instruct":
+            return 32768
+        case _:
+            return 32768
