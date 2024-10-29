@@ -82,7 +82,7 @@ def simple_test(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
     config = CreateSingleLocalBootstrapConfig(8002, 0, model, "configs/lmcache_local_cpu.yaml")
     ModelConfig(model, config)
     lengths = [8192]
-    experiments = [CreateDummyExperiment(3, length ) for length in lengths]
+    experiments = [CreateDummyExperiment(5, length ) for length in lengths]
     test_case = TestCase(
             experiments = experiments,
             engines = [config])
@@ -98,7 +98,8 @@ def offline_test(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
     pattern = "Server started at"
     run_command("lmcache_server localhost 65431", stdout_log, stderr_log, detach=True)
     time.sleep(10)
-    os.environ['LMCACHE_CONFIG_FILE'] = "/local/shaotingf/lmcache1/lmcache-tests/configs/example.yaml"
+    # os.environ['LMCACHE_CONFIG_FILE'] = "/local/shaotingf/lmcache1/lmcache-tests/configs/example.yaml"
+    os.environ['LMCACHE_CONFIG_FILE'] = "./configs/example.yaml"
     os.environ['CUDA_VISIBLE_DEVICES'] = '0'
     run_command("python3 tests/offline_test.py", stdout_log2, stderr_log2, detach=False)
     return None

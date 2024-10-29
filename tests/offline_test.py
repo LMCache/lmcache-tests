@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 model_name = "mistralai/Mistral-7B-Instruct-v0.2"
-context_file = "/local/shaotingf/lmcache1/lmcache-tests/ffmpeg.txt"
-output_file = "/local/shaotingf/lmcache1/lmcache-tests/outputs/offline_inference_outputs.jsonl"
+context_file = "./ffmpeg.txt"
+output_file = "./outputs/offline_inference_outputs.jsonl"
 
 context_text = None
 with open(context_file, 'r') as f:
