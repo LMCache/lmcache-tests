@@ -172,13 +172,16 @@ def test_vary_length_workload(model = "mistralai/Mistral-7B-Instruct-v0.2") -> p
 
 def test_multi_turn(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
     """
-    This function tests the performance of saving decode KV Cache by starting a multi-turn conversation.
+    This function tests the performance of saving decode KV Cache with a multi-turn conversation
+    by comparing performance with and without lmcache.
     """
     # Start one server: with lmcache; for contrast (not saving decode KV Cache), change save_decode_cache to false
-    config = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_local_cpu_multi.yaml")
+    config1 = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_local_cpu_multi.yaml")
+    config2 = CreateSingleLocalBootstrapConfig(8000, 1, model, None)
 
     # Set vllm configuration for different models
-    ModelConfig(model, config)
+    ModelConfig(model, config1)
+    ModelConfig(model, config2)
 
     # Experiment: ONE query that contains 5 rounds 
     lengths = [16] # useless for this test case
@@ -186,7 +189,7 @@ def test_multi_turn(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFram
 
     test_case = TestCase(
             experiments = experiments,
-            engines = [config])
+            engines = [config1, config2])
     
     # Run test case
     final_result = run_test_case(test_case)
