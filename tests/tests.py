@@ -79,6 +79,9 @@ def ModelConfig(model: str, BootstrapConfig) -> None:
 
 ##### Test cases #####
 def offline_test(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
+    """
+    This function tests partial prefll and full prefill in a single batch.
+    """
     user_name=os.popen('whoami').read()[:-1]
     stdout_log = os.path.join(f"/tmp/{user_name}-65431-stdout.log")
     stderr_log = os.path.join(f"/tmp/{user_name}-65431-stderr.log")
@@ -178,7 +181,7 @@ def test_multi_turn(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFram
     ModelConfig(model, config)
 
     # Experiment: ONE query that contains 5 rounds 
-    lengths = [16]
+    lengths = [16] # useless for this test case
     experiments = [CreateMultiTurnExperiment(1, length ) for length in lengths]
 
     test_case = TestCase(

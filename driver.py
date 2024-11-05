@@ -223,18 +223,25 @@ def execute_openai_request_with_output(request: Request, model: str, client: ope
     Execute a single request to the OpenAI engine
     Returns: TTFT (seconds) and throughput (tokens per second)
     """
-
-    messages = [{
-        "role": "user",
-        "content": f"{request.context} {request.question}"
-        }]
-
-    #import random
-    #t = random.randint(2, 8)
-    #time.sleep(t)
-    #return t, t
-
-    
+    messages = [
+        {
+            "role": "user",
+            "content": request.question
+        }
+    ]
+    split_strings = request.context.split("<<splitter>>")
+    for split_string in split_strings:
+        if split_string != "":
+            messages.extend([
+                {
+                    "role": "assistant",
+                    "content": split_string
+                },
+                {
+                    "role": "user",
+                    "content": request.question
+                }
+            ])
     try:
         logger.debug("Issusing a new request...")
         chat_completion = client.chat.completions.create(
@@ -396,7 +403,6 @@ def run_multi_turn_experiment(
             gpu_usage.append(read_gpu_memory())
             for idx, generator in enumerate(workload_generators):
                 generator.offset += 1 / workload_config.qps
-                generator.store(f"{workloads[idx][0].context} {workloads[idx][0].question}")
                 generator.store(results[i][0].messages)
 
     except Exception as e:
