@@ -4,7 +4,9 @@ import os
 import time
 import logging
 import random
+import subprocess
 
+from lmcache_vllm import close_lmcache_engine
 from lmcache_vllm.vllm import LLM, SamplingParams
 from transformers import AutoTokenizer
 
@@ -156,3 +158,7 @@ for i in range(3):
     with open(output_file, "a") as f:
         f.write(f"\n\nBatched request:\n\n")
     append_outputs(output_file, third_outputs, context_length+context_length_random, t6 - t5)
+
+# Graceful exit
+close_lmcache_engine()
+subprocess.run("lsof -i:65431 -t | xargs kill -9", shell=True)

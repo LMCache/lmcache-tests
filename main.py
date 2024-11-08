@@ -21,7 +21,7 @@ def wrapped_test_runner(test_func, model, output_file):
         output_df.to_csv(output_file, index=False)
         logger.info("Saving output to " + output_file)
     else:
-        logger.warn(f"Output is {type(output_df)}, not a DataFrame. Skipping saving to file.")
+        logger.warning(f"Output is {type(output_df)}, not a DataFrame. Skipping saving to file.")
 
 def main():
     

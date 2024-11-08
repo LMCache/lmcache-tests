@@ -85,15 +85,11 @@ def offline_test(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
     user_name=os.popen('whoami').read()[:-1]
     stdout_log = os.path.join(f"/tmp/{user_name}-65431-stdout.log")
     stderr_log = os.path.join(f"/tmp/{user_name}-65431-stderr.log")
-    stdout_log2 = os.path.join(f"/tmp/{user_name}-65431-stdout-1.log")
-    stderr_log2 = os.path.join(f"/tmp/{user_name}-65431-stderr-2.log")
-    pattern = "Server started at"
-    run_command("lmcache_server localhost 65431", stdout_log, stderr_log, detach=True)
+    run_command("lmcache_server localhost 65431", stdout_log, None, detach=True)
     time.sleep(10)
-    # os.environ['LMCACHE_CONFIG_FILE'] = "/local/shaotingf/lmcache1/lmcache-tests/configs/example.yaml"
     os.environ['LMCACHE_CONFIG_FILE'] = "./configs/example.yaml"
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-    run_command("python3 tests/offline_test.py", stdout_log2, stderr_log2, detach=False)
+    os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+    run_command("python3 tests/offline_test.py", None, stderr_log, detach=False)
     return None
 
 def test_cache_compatibility(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
@@ -177,13 +173,13 @@ def test_multi_turn(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFram
     """
     # Start one server: with lmcache; for contrast (not saving decode KV Cache), change save_decode_cache to false
     config1 = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_local_cpu_multi.yaml")
-    config2 = CreateSingleLocalBootstrapConfig(8000, 1, model, None)
+    config2 = CreateSingleLocalBootstrapConfig(8001, 1, model, None)
 
     # Set vllm configuration for different models
     ModelConfig(model, config1)
     ModelConfig(model, config2)
 
-    # Experiment: ONE query that contains 5 rounds 
+    # Experiment: ONE query that contains 10 rounds 
     lengths = [16] # useless for this test case
     experiments = [CreateMultiTurnExperiment(1, length ) for length in lengths]
 
