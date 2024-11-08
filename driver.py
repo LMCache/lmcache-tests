@@ -393,17 +393,18 @@ def run_multi_turn_experiment(
         # Execute the requests
         executor = RequestExecutor()
 
-        # Generation and execution in multi turns (hard-coded 5 turns)
+        # Generation and execution in multi turns (hard-coded 10 turns)
         results = []
         gpu_usage = []
-        for i in range(5):
+        for i in range(10):
             workloads = [generator.generate() for generator in workload_generators]
             executor.schedule_requests(workloads, clients, models)
             results.append(executor.execute_all_with_output())
+            [setattr(result, 'request_id', i) for result in results[i]]
             gpu_usage.append(read_gpu_memory())
             for idx, generator in enumerate(workload_generators):
                 generator.offset += 1 / workload_config.qps
-                generator.store(results[i][0].messages)
+                generator.store(results[i][idx].messages)
 
     except Exception as e:
         logger.error(f"Experiment failed: {e}")
