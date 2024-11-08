@@ -82,7 +82,7 @@ def append_outputs(output_file_name, outputs, context_length, time_taken):
         f.write(json.dumps(json_dict) + '\n')
 
 # Create a sampling params object.
-sampling_params = SamplingParams(temperature=1, max_tokens=1) # Set to 1 for TTFT
+sampling_params = SamplingParams(temperature=0, max_tokens=1) # Set to 1 for TTFT
 # Create an LLM.
 llm = LLM(model=model_name,
           gpu_memory_utilization=0.6,
