@@ -29,7 +29,9 @@ def process_result_file(filename):
     # For TTFT
     for expr_id, g in df.groupby("expr_id"):
         context_len = list(g["context_len"])[0]
-        fig, ax = plot_df(g, x = "request_id", y = "TTFT", group="engine_id", kind = "line", ylabel="TTFT (s)", ylim = (0, None))
+        max_ttft = g["TTFT"].max()  # Get the maximum throughput value
+        ylim_max = max_ttft + 0.5  # Set the upper limit to max value + 0.5
+        fig, ax = plot_df(g, x = "request_id", y = "TTFT", group="engine_id", kind = "line", ylabel="TTFT (s)", ylim = (0, ylim_max))
         ax.set_title(f"Context len = {context_len}")
         pdf_pages.savefig(fig, bbox_inches="tight")
 
