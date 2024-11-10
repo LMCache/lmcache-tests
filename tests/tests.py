@@ -172,12 +172,12 @@ def test_multi_turn(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFram
     by comparing performance with and without lmcache.
     """
     # Start one server: with lmcache; for contrast (not saving decode KV Cache), change save_decode_cache to false
-    config1 = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_local_cpu_multi.yaml")
-    config2 = CreateSingleLocalBootstrapConfig(8001, 1, model, None)
+    config1 = CreateSingleLocalBootstrapConfig(8000, 1, model, "configs/lmcache_local_cpu_multi.yaml")
+    # config2 = CreateSingleLocalBootstrapConfig(8001, 1, model, None)
 
     # Set vllm configuration for different models
     ModelConfig(model, config1)
-    ModelConfig(model, config2)
+    # ModelConfig(model, config2)
 
     # Experiment: ONE query that contains 10 rounds 
     lengths = [16] # useless for this test case
@@ -185,7 +185,8 @@ def test_multi_turn(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFram
 
     test_case = TestCase(
             experiments = experiments,
-            engines = [config1, config2])
+            # engines = [config1, config2])
+            engines = [config1])
     
     # Run test case
     final_result = run_test_case(test_case)
