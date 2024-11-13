@@ -68,8 +68,9 @@ def ModelConfig(model: str, BootstrapConfig) -> None:
             pass
         case "THUDM/glm-4-9b-chat":
             BootstrapConfig.vllm_config.tensor_parallel_size = 2
-            BootstrapConfig.vllm_config.gpu_memory_utilization = 0.8
             BootstrapConfig.vllm_optional_config["trust_remote_code"] = ""
+            BootstrapConfig.vllm_optional_config["enable_chunked_prefill"] = False
+            BootstrapConfig.vllm_optional_config["max_model_len"] = get_max_context_length(model)
         case "meta-llama/Llama-3.1-8B-Instruct":
             BootstrapConfig.vllm_optional_config["enable_chunked_prefill"] = False
             BootstrapConfig.vllm_optional_config["max_model_len"] = get_max_context_length(model)
