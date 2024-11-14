@@ -4,7 +4,9 @@ import os
 import time
 import logging
 import random
+import subprocess
 
+from lmcache_vllm import close_lmcache_engine
 from lmcache_vllm.vllm import LLM, SamplingParams
 from transformers import AutoTokenizer
 
@@ -80,7 +82,7 @@ def append_outputs(output_file_name, outputs, context_length, time_taken):
         f.write(json.dumps(json_dict) + '\n')
 
 # Create a sampling params object.
-sampling_params = SamplingParams(temperature=1, max_tokens=1) # Set to 1 for TTFT
+sampling_params = SamplingParams(temperature=0, max_tokens=1) # Set to 1 for TTFT
 # Create an LLM.
 llm = LLM(model=model_name,
           gpu_memory_utilization=0.6,
@@ -156,3 +158,7 @@ for i in range(3):
     with open(output_file, "a") as f:
         f.write(f"\n\nBatched request:\n\n")
     append_outputs(output_file, third_outputs, context_length+context_length_random, t6 - t5)
+
+# Graceful exit
+close_lmcache_engine()
+subprocess.run("lsof -i:65431 -t | xargs kill -9", shell=True)

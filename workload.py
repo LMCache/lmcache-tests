@@ -113,20 +113,21 @@ class MultiTurnWorkloadGenerator(WorkloadGenerator):
         super().__init__(config)
         self.dummy_context = "This is some dummy text. "
         self.estimated_num_tokens_context = utils.estimate_num_tokens(self.dummy_context)
-        dummy_question = "Index 0. Question: Please write a very long essay about whatever topic. "
+        dummy_question = "Index x.  Question: Please write a very long essay about whatever topic. "
         self.estimated_num_tokens_question = utils.estimate_num_tokens(dummy_question)
         self.memory = ""
         self.offset = self.config.offset
+        self.separator = "<<splitter>>"
 
     def generate_context(self) -> str:
-        return self.memory + self.dummy_context * (self.config.context_length // self.estimated_num_tokens_context)
+        return self.memory
 
     def generate_question(self, index: int) -> str:
         if self.config.query_length - self.estimated_num_tokens_question > 0:
             question_prefix = self.dummy_context * ((self.config.query_length - self.estimated_num_tokens_question) // self.estimated_num_tokens_context)
         else:
             question_prefix = ""
-        return f"Index {index}. {question_prefix} Question: Please write a very long essay about whatever topic. "
+        return f"Index x. {question_prefix} Question: Please write a very long essay about whatever topic. "
 
     def generate(self) -> List[Request]:
         num_requests = int(self.config.duration * self.config.qps)
@@ -143,7 +144,7 @@ class MultiTurnWorkloadGenerator(WorkloadGenerator):
         return ret
     
     def store(self, memory: str) -> None:
-        self.memory = self.memory + memory
+        self.memory = f"{self.memory}{self.separator}{memory}"
 
 #if __name__ == "__main__":
 #    config = WorkloadConfig(
