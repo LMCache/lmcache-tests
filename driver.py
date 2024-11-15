@@ -14,13 +14,13 @@ from utils import read_gpu_memory, get_max_context_length
 import log
 logger = log.init_logger(__name__)
 
-@dataclass
-class ExperimentResult:
-    timestamp: str
-    engine_id: int
-    request_id: int
-    TTFT: float
-    throughput: float
+# @dataclass
+# class ExperimentResult:
+#     timestamp: str
+#     engine_id: int
+#     request_id: int
+#     TTFT: float
+#     throughput: float
 
 @dataclass
 class ExperimentResultWithOutput:
