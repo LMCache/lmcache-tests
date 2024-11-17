@@ -14,16 +14,8 @@ from utils import read_gpu_memory, get_max_context_length
 import log
 logger = log.init_logger(__name__)
 
-# @dataclass
-# class ExperimentResult:
-#     timestamp: str
-#     engine_id: int
-#     request_id: int
-#     TTFT: float
-#     throughput: float
-
 @dataclass
-class ExperimentResultWithOutput:
+class ExperimentResult:
     timestamp: str
     engine_id: int
     request_id: int
@@ -57,26 +49,11 @@ class RequestExecutor:
         """
         Execute the request and put the result into the queue
         """
-        ttft, thp = execute_openai_request(request, model, client)
+        ttft, thp, messages = execute_openai_request(request, model, client)
         logger.info(f"Request completed, TTFT = {ttft}, throughput = {thp}")
-        queue.put(ExperimentResult(request.timestamp, client_id, request_id, ttft, thp))
-
-    def execute_one_request_with_output(
-            self, 
-            client_id: int, 
-            request_id: int, 
-            request: Request, 
-            client: openai.Client, 
-            model: str,
-            queue: multiprocessing.Queue) -> Tuple[float, float]:
-        """
-        Execute the request and put the result into the queue
-        """
-        ttft, thp, messages = execute_openai_request_with_output(request, model, client)
-        logger.info(f"Request completed, TTFT = {ttft}, throughput = {thp}")
-        queue.put(ExperimentResultWithOutput(request.timestamp, client_id, request_id, ttft, thp, messages))
-
-    def execute_all(self) -> List[ExperimentResult]:
+        queue.put(ExperimentResult(request.timestamp, client_id, request_id, ttft, thp, messages))
+    
+    def execute_all(self) -> List[ExperimentResult]: 
         """
         Returns the list of expr results
         """
@@ -93,39 +70,6 @@ class RequestExecutor:
                 # Execute the request by a new process
                 process = multiprocessing.Process(
                         target = self.execute_one_request, 
-                        args=(client_id, request_id, request, client, model, queue))
-                process.start()
-                processes.append(process)
-
-            # Wait for all the processes to finish
-            for process in processes:
-                process.join()
-
-        except Exception as e:
-            logger.error(f"Exception happend when sending request: {e}")
-            for process in processes:
-                process.terminate()
-            return []
-
-        return [queue.get() for _ in self.pending_requests]
-    
-    def execute_all_with_output(self) -> List[ExperimentResultWithOutput]: 
-        """
-        Returns the list of expr results
-        """
-        queue = multiprocessing.Queue()
-        start_time = time.time()
-        processes = []
-        try:
-            for client_id, request_id, request, client, model in self.pending_requests:
-                already_elapsed = time.time() - start_time
-                # Wait for the request to be ready
-                wait_time = request.timestamp - already_elapsed
-                if wait_time > 0:
-                    time.sleep(wait_time)
-                # Execute the request by a new process
-                process = multiprocessing.Process(
-                        target = self.execute_one_request_with_output, 
                         args=(client_id, request_id, request, client, model, queue))
                 process.start()
                 processes.append(process)
@@ -168,57 +112,7 @@ def create_openai_client(port: int, model) -> openai.Client:
 
     return client
 
-
-def execute_openai_request(request: Request, model: str, client: openai.Client) -> Tuple[float, float]:
-    """
-    Execute a single request to the OpenAI engine
-    Returns: TTFT (seconds) and throughput (tokens per second)
-    """
-
-    messages = [{
-        "role": "user",
-        "content": f"{request.context} {request.question}"
-        }]
-
-    #import random
-    #t = random.randint(2, 8)
-    #time.sleep(t)
-    #return t, t
-
-    
-    try:
-        logger.debug("Issusing a new request...")
-        chat_completion = client.chat.completions.create(
-                messages = messages,
-                model = model,
-                temperature = 0,
-                stream = True,
-                max_tokens = 200,
-            )
-
-        start_time = time.perf_counter()
-        first_token_time = None
-        ntokens = 0
-        messages = []
-        for chunk in chat_completion:
-            chunk_message = chunk.choices[0].delta.content
-            if chunk_message is not None:
-                if first_token_time is None and chunk_message != " " and chunk_message != "":
-                    first_token_time = time.perf_counter()
-                messages.append(chunk_message)
-                ntokens += 1
-        end_time = time.perf_counter()
-
-        ttft = first_token_time - start_time
-        throughput = ntokens / (end_time - first_token_time)
-        logger.debug(f"Response: {''.join(messages)}")
-    except Exception as e:
-        logger.error(f"OpenAI request failed: {e}")
-        return -1, -1
-
-    return ttft, throughput
-
-def execute_openai_request_with_output(request: Request, model: str, client: openai.Client) -> Tuple[float, float, str]:
+def execute_openai_request(request: Request, model: str, client: openai.Client) -> Tuple[float, float, str]:
     """
     Execute a single request to the OpenAI engine
     Returns: TTFT (seconds) and throughput (tokens per second)
@@ -348,7 +242,7 @@ def run_experiment(
 def run_multi_turn_experiment(
         workload_config: WorkloadConfig, 
         usecase: Usecase, 
-        engine_configs: List[BootstrapConfig]) -> List[ExperimentResultWithOutput]:
+        engine_configs: List[BootstrapConfig]) -> List[ExperimentResult]:
     """
     Run a multi turn experiment: 
     - Bootstrap the serving bootstrappers
@@ -399,7 +293,7 @@ def run_multi_turn_experiment(
         for i in range(10):
             workloads = [generator.generate() for generator in workload_generators]
             executor.schedule_requests(workloads, clients, models)
-            results.append(executor.execute_all_with_output())
+            results.append(executor.execute_all())
             [setattr(result, 'request_id', i) for result in results[i]]
             gpu_usage.append(read_gpu_memory())
             for idx, generator in enumerate(workload_generators):
