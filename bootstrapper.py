@@ -134,7 +134,7 @@ class LocalLMCacheServerBootstrapper(Bootstrapper):
             return
 
         # cmd = f"python3 -um lmcache_server.server {self.host} {self.port} {self.remote_device}"
-        cmd = f"python -um lmcache.server  {self.host} {self.port} "
+        cmd = f"python -um lmcache.server  {self.host} {self.port} {self.remote_device}"
         print(f"\033[32mLaunching Remote LMCache Server with Command :\033[0m {cmd}")
         self.handle = run_command(cmd, self.stdout_log, self.stderr_log, detach=True)
         self.started = True
