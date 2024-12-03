@@ -83,12 +83,12 @@ def main():
     if args.model is None:
         for func, name in zip(function_list, function_names):
             logger.info("Executing function: " + name)
-            wrapped_test_runner(func, None, f"outputs/{name}.csv")
+            wrapped_test_runner(func, None, f"{args.output_dir}{name}.csv")
     else:
         model_prefix = args.model.split('/')[0]
         for func, name in zip(function_list, function_names):
             logger.info("Executing function: " + name)
-            wrapped_test_runner(func, args.model, f"outputs/{name}_{model_prefix}.csv")
+            wrapped_test_runner(func, args.model, f"{args.output_dir}{name}_{model_prefix}.csv")
     
 if __name__ == "__main__":
     main()
