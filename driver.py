@@ -307,9 +307,10 @@ def run_experiment(
 
 
     # Start the serving engine
-    bootstrappers = [CreateBootstrapper(config) for config in engine_configs]
-    for bootstrapper in bootstrappers:
-        bootstrapper.start()
+    bootstrappers = []
+    for config in engine_configs:
+        bootstrappers.append(CreateBootstrapper(config))
+        bootstrappers[-1].start()
 
     try:
         # Wait for the engines to be ready
@@ -373,9 +374,10 @@ def run_multi_turn_experiment(
     workload_generators = [MultiTurnWorkloadGenerator(workload_config) for _ in engine_configs]
 
     # Start the serving engine
-    bootstrappers = [CreateBootstrapper(config) for config in engine_configs]
-    for bootstrapper in bootstrappers:
-        bootstrapper.start()
+    bootstrappers = []
+    for config in engine_configs:
+        bootstrappers.append(CreateBootstrapper(config))
+        bootstrappers[-1].start()
 
     try:
         # Wait for the engines to be ready
@@ -402,9 +404,9 @@ def run_multi_turn_experiment(
             results.append(executor.execute_all_with_output())
             [setattr(result, 'request_id', i) for result in results[i]]
             gpu_usage.append(read_gpu_memory())
-            for idx, generator in enumerate(workload_generators):
-                generator.offset += 1 / workload_config.qps
-                generator.store(results[i][idx].messages)
+            for result in results[i]:
+                workload_generators[result.engine_id].offset += 1 / workload_config.qps
+                workload_generators[result.engine_id].store(result.messages)
 
     except Exception as e:
         logger.error(f"Experiment failed: {e}")
