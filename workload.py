@@ -113,7 +113,7 @@ class MultiTurnWorkloadGenerator(WorkloadGenerator):
         super().__init__(config)
         self.dummy_context = "This is some dummy text. "
         self.estimated_num_tokens_context = utils.estimate_num_tokens(self.dummy_context)
-        dummy_question = "Index x.  Question: Please write a very long essay about whatever topic. "
+        dummy_question = "Index x.  Question: Please write a very long essay (more than 1500 tokens). "
         self.estimated_num_tokens_question = utils.estimate_num_tokens(dummy_question)
         self.memory = ""
         self.offset = self.config.offset
@@ -127,7 +127,7 @@ class MultiTurnWorkloadGenerator(WorkloadGenerator):
             question_prefix = self.dummy_context * ((self.config.query_length - self.estimated_num_tokens_question) // self.estimated_num_tokens_context)
         else:
             question_prefix = ""
-        return f"Index x. {question_prefix} Question: Please write a very long essay about whatever topic. "
+        return f"Index x. {question_prefix} Question: Please write a very long essay (more than 1500 tokens). "
 
     def generate(self) -> List[Request]:
         num_requests = int(self.config.duration * self.config.qps)
