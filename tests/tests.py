@@ -415,6 +415,10 @@ def test_lmcache_remote_disk(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd
 
     # Run test case
     final_result = run_test_case(test_case)
+
+    # Clean up
+    os.system("rm -rf /local/end-to-end-tests/lmcache-server/*")
+
     return final_result
 
 def test_lmcache_redis_sentinel(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
