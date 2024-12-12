@@ -399,7 +399,7 @@ def test_lmcache_remote_disk(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd
     config1 = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_remote_cachegen.yaml")
     config2 = CreateSingleLocalBootstrapConfig(8001, 1, model, None)
 
-    config1.lmcache_config.remote_device = "/local/end-to-end-tests/lmcache-server"
+    config1.lmcache_config.remote_device = "/local/end-to-end-tests/lmcache-server/"
 
     # Set vllm configuration for different models
     ModelConfig(model, config1)
