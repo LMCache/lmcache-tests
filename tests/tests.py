@@ -427,7 +427,7 @@ def test_lmcache_remote_disk(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd
     final_result = run_test_case(test_case)
 
     # Clean up
-    os.system(f"rm -rf {config1.lmcache_config.remote_device}")
+    os.system(f"rm -rf {config1.lmcache_config.remote_device}*")
 
     return final_result
 
