@@ -4,3 +4,4 @@ remote_url: null
 
 # Whether retrieve() is pipelined or not
 pipelined_backend: False
+max_local_cache_size: 4
