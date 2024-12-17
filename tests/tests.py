@@ -255,9 +255,8 @@ def test_lmcache_local_disk(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.
     ModelConfig(model, config2)
 
     # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
-    # lengths = [8192, 16384, 24576]
-    lengths = [8192]
-    experiments = [CreateDummyExperiment(1, length) for length in lengths]
+    lengths = [8192, 16384, 24576]
+    experiments = [CreateDummyExperiment(5, length) for length in lengths]
 
     test_case = TestCase(
             experiments = experiments,
