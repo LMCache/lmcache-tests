@@ -4,7 +4,6 @@ import time
 import multiprocessing
 from dataclasses import dataclass
 import openai
-import os
 
 from configs import BootstrapConfig, WorkloadConfig, Usecase
 from test_cases import TestCase
