@@ -134,9 +134,9 @@ def test_chunk_prefill(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataF
     ModelConfig(model, config1)
     ModelConfig(model, config2)
 
-    # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
+    # Experiments: 8K, 16K, 24K shared context, each experiments has 10 queries
     lengths = [8192, 16384, 24576]
-    experiments = [CreateDummyExperiment(5, length ) for length in lengths]
+    experiments = [CreateDummyExperiment(10, length ) for length in lengths]
 
     test_case = TestCase(
             experiments = experiments,
@@ -207,7 +207,7 @@ def test_lmcache_local_gpu(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.D
 
     # Experiments: 8K, 16K, 24K shared context, each experiments has 10 queries
     lengths = [8192, 16384, 24576]
-    experiments = [CreateDummyExperiment(5, length) for length in lengths]
+    experiments = [CreateDummyExperiment(10, length) for length in lengths]
 
     test_case = TestCase(
             experiments = experiments,
@@ -254,9 +254,9 @@ def test_lmcache_local_disk(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.
     ModelConfig(model, config1)
     ModelConfig(model, config2)
 
-    # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
+    # Experiments: 8K, 16K, 24K shared context, each experiments has 10 queries
     lengths = [8192, 16384, 24576]
-    experiments = [CreateDummyExperiment(5, length) for length in lengths]
+    experiments = [CreateDummyExperiment(10, length) for length in lengths]
 
     test_case = TestCase(
             experiments = experiments,
@@ -286,7 +286,7 @@ def test_lmcache_local_distributed(model = "mistralai/Mistral-7B-Instruct-v0.2")
     # Set vllm configuration for different models
     ModelConfig(model, config)
 
-    # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
+    # Experiments: 8K, 16K, 24K shared context, each experiments has 10 queries
     lengths = [8192, 16384, 24576]
     experiments = [CreateDummyExperiment(10, length) for length in lengths]
 
@@ -311,7 +311,7 @@ def test_lmcache_remote_cachegen(model = "mistralai/Mistral-7B-Instruct-v0.2") -
     ModelConfig(model, config1)
     ModelConfig(model, config2)
     
-    # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
+    # Experiments: 8K, 16K, 24K shared context, each experiments has 10 queries
     lengths = [8192, 16384, 24576]
     experiments = [CreateDummyExperiment(10, length) for length in lengths]
 
@@ -363,7 +363,7 @@ def test_lmcache_remote_safetensor(model = "mistralai/Mistral-7B-Instruct-v0.2")
     ModelConfig(model, config1)
     ModelConfig(model, config2)
     
-    # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
+    # Experiments: 8K, 16K, 24K shared context, each experiments has 10 queries
     lengths = [8192, 16384, 24576]
     experiments = [CreateDummyExperiment(10, length) for length in lengths]
 
@@ -388,7 +388,7 @@ def test_lmcache_safetensor_distributed(model = "mistralai/Mistral-7B-Instruct-v
     # Set vllm configuration for different models
     ModelConfig(model, config)
 
-    # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
+    # Experiments: 8K, 16K, 24K shared context, each experiments has 10 queries
     lengths = [8192, 16384, 24576]
     experiments = [CreateDummyExperiment(10, length) for length in lengths]
 
@@ -414,7 +414,7 @@ def test_lmcache_remote_disk(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd
     ModelConfig(model, config1)
     ModelConfig(model, config2)
 
-    # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
+    # Experiments: 8K, 16K, 24K shared context, each experiments has 10 queries
     lengths = [8192, 16384, 24576]
     experiments = [CreateDummyExperiment(10, length) for length in lengths]
 
