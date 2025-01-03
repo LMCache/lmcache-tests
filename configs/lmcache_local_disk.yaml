@@ -1,5 +1,5 @@
 chunk_size: 256
-local_device: "file:///local/lmcache-tests/"
+local_device: "file:///local/end-to-end-tests/local/"
 remote_url: null
 remote_serde: "cachegen"
 

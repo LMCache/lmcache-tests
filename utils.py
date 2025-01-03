@@ -27,10 +27,10 @@ class ProcessHandle:
         if self.stdout_file is not None:
             self.stdout_file.close()
 
-        if self.stdout_filename is not None and os.path.exists(self.stdout_filename):
-            os.remove(self.stdout_filename)
-        if self.stderr_filename is not None and os.path.exists(self.stderr_filename):
-            os.remove(self.stderr_filename)
+        # if self.stdout_filename is not None and os.path.exists(self.stdout_filename):
+        #     os.remove(self.stdout_filename)
+        # if self.stderr_filename is not None and os.path.exists(self.stderr_filename):
+        #     os.remove(self.stderr_filename)
 
         countdown = force_kill_after
         while self.is_alive() and countdown > 0:

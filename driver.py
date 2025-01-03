@@ -4,6 +4,7 @@ import time
 import multiprocessing
 from dataclasses import dataclass
 import openai
+import os
 
 from configs import BootstrapConfig, WorkloadConfig, Usecase
 from test_cases import TestCase
@@ -211,6 +212,13 @@ def execute_openai_request(request: Request, model: str, client: openai.Client) 
 
         ttft = first_token_time - start_time
         throughput = ntokens / (end_time - first_token_time)
+
+        # Record the latency
+        total_time = end_time - start_time  
+        output_file = os.path.join("outputs", "latency.txt")
+        with open(output_file, "a") as file:
+            file.write(f"Total time: {total_time:.6f} seconds\n")
+
         logger.debug(f"Response: {''.join(messages)}")
     except Exception as e:
         logger.error(f"OpenAI request failed: {e}")
