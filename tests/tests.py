@@ -8,6 +8,7 @@ from test_cases import TestCase
 from configs import BootstrapConfig, WorkloadConfig, Usecase
 from configs import VLLMConfig, VLLMOptionalConfig, LMCacheConfig, EngineType
 from utils import run_command, get_max_context_length
+import yaml
 
 ##### Helper functions #####
 def CreateSingleLocalBootstrapConfig(
@@ -133,9 +134,9 @@ def test_chunk_prefill(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataF
     ModelConfig(model, config1)
     ModelConfig(model, config2)
 
-    # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
+    # Experiments: 8K, 16K, 24K shared context, each experiments has 10 queries
     lengths = [8192, 16384, 24576]
-    experiments = [CreateDummyExperiment(5, length ) for length in lengths]
+    experiments = [CreateDummyExperiment(10, length ) for length in lengths]
 
     test_case = TestCase(
             experiments = experiments,
@@ -206,7 +207,7 @@ def test_lmcache_local_gpu(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.D
 
     # Experiments: 8K, 16K, 24K shared context, each experiments has 10 queries
     lengths = [8192, 16384, 24576]
-    experiments = [CreateDummyExperiment(5, length) for length in lengths]
+    experiments = [CreateDummyExperiment(10, length) for length in lengths]
 
     test_case = TestCase(
             experiments = experiments,
@@ -245,14 +246,15 @@ def test_lmcache_local_disk(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.
     This function tests local disk storage backend by comparing scenarios with and without lmcache.
     """
     # Start two servers: with lmcache and without lmcache
-    config1 = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_local_disk.yaml")
+    yaml_config = "configs/lmcache_local_disk.yaml"
+    config1 = CreateSingleLocalBootstrapConfig(8000, 0, model, yaml_config)
     config2 = CreateSingleLocalBootstrapConfig(8001, 1, model, None)
 
     # Set vllm configuration for different models
     ModelConfig(model, config1)
     ModelConfig(model, config2)
 
-    # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
+    # Experiments: 8K, 16K, 24K shared context, each experiments has 10 queries
     lengths = [8192, 16384, 24576]
     experiments = [CreateDummyExperiment(10, length) for length in lengths]
 
@@ -262,6 +264,13 @@ def test_lmcache_local_disk(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.
 
     # Run test case
     final_result = run_test_case(test_case)
+
+    # Clean up
+    with open(yaml_config, 'r') as file:
+        data = yaml.safe_load(file)
+    local_device = data.get('local_device') + "*"
+    os.system(f"rm -rf {local_device}")
+
     return final_result
 
 def test_lmcache_local_distributed(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame: 
@@ -277,7 +286,7 @@ def test_lmcache_local_distributed(model = "mistralai/Mistral-7B-Instruct-v0.2")
     # Set vllm configuration for different models
     ModelConfig(model, config)
 
-    # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
+    # Experiments: 8K, 16K, 24K shared context, each experiments has 10 queries
     lengths = [8192, 16384, 24576]
     experiments = [CreateDummyExperiment(10, length) for length in lengths]
 
@@ -302,7 +311,7 @@ def test_lmcache_remote_cachegen(model = "mistralai/Mistral-7B-Instruct-v0.2") -
     ModelConfig(model, config1)
     ModelConfig(model, config2)
     
-    # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
+    # Experiments: 8K, 16K, 24K shared context, each experiments has 10 queries
     lengths = [8192, 16384, 24576]
     experiments = [CreateDummyExperiment(10, length) for length in lengths]
 
@@ -354,7 +363,7 @@ def test_lmcache_remote_safetensor(model = "mistralai/Mistral-7B-Instruct-v0.2")
     ModelConfig(model, config1)
     ModelConfig(model, config2)
     
-    # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
+    # Experiments: 8K, 16K, 24K shared context, each experiments has 10 queries
     lengths = [8192, 16384, 24576]
     experiments = [CreateDummyExperiment(10, length) for length in lengths]
 
@@ -379,7 +388,7 @@ def test_lmcache_safetensor_distributed(model = "mistralai/Mistral-7B-Instruct-v
     # Set vllm configuration for different models
     ModelConfig(model, config)
 
-    # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
+    # Experiments: 8K, 16K, 24K shared context, each experiments has 10 queries
     lengths = [8192, 16384, 24576]
     experiments = [CreateDummyExperiment(10, length) for length in lengths]
 
@@ -399,13 +408,13 @@ def test_lmcache_remote_disk(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd
     config1 = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_remote_cachegen.yaml")
     config2 = CreateSingleLocalBootstrapConfig(8001, 1, model, None)
 
-    config1.lmcache_config.remote_device = "/local/end-to-end-tests/lmcache-server"
+    config1.lmcache_config.remote_device = "/local/end-to-end-tests/lmcache-server/"
 
     # Set vllm configuration for different models
     ModelConfig(model, config1)
     ModelConfig(model, config2)
 
-    # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
+    # Experiments: 8K, 16K, 24K shared context, each experiments has 10 queries
     lengths = [8192, 16384, 24576]
     experiments = [CreateDummyExperiment(10, length) for length in lengths]
 
@@ -415,22 +424,30 @@ def test_lmcache_remote_disk(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd
 
     # Run test case
     final_result = run_test_case(test_case)
+
+    # Clean up
+    os.system(f"rm -rf {config1.lmcache_config.remote_device}*")
+
     return final_result
 
 def test_lmcache_redis_sentinel(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
-    config1 = CreateSingleLocalBootstrapConfig(8000, 1, model, "configs/lmcache_redis_sentinel_cachegen.yaml")
+    # Set up the master node
+    os.environ["REDIS_SERVICE_NAME"] = "redismaster"
+
+    config1 = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_redis_sentinel_cachegen.yaml")
+    config2 = CreateSingleLocalBootstrapConfig(8001, 1, model, None)
 
     # Set vllm configuration for different models
     ModelConfig(model, config1)
+    ModelConfig(model, config2)
     
-    # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
-    #lengths = [8192, 16384, 24576]
-    lengths = [24576]
+    # Experiments: 10375 shared context, each experiments has 10 queries
+    lengths = [10375]
     experiments = [CreateDummyExperiment(10, length) for length in lengths]
 
     test_case = TestCase(
             experiments = experiments,
-            engines = [config1])
+            engines = [config1, config2])
 
     # Run test case
     final_result = run_test_case(test_case)
