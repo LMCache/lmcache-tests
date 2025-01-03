@@ -22,6 +22,7 @@ class ExperimentResult:
     request_id: int
     TTFT: float
     throughput: float
+    latency: float
 
 @dataclass
 class ExperimentResultWithOutput:
@@ -58,9 +59,9 @@ class RequestExecutor:
         """
         Execute the request and put the result into the queue
         """
-        ttft, thp = execute_openai_request(request, model, client)
+        ttft, thp, latency = execute_openai_request(request, model, client)
         logger.info(f"Request completed, TTFT = {ttft}, throughput = {thp}")
-        queue.put(ExperimentResult(request.timestamp, client_id, request_id, ttft, thp))
+        queue.put(ExperimentResult(request.timestamp, client_id, request_id, ttft, thp, latency))
 
     def execute_one_request_with_output(
             self, 
@@ -212,19 +213,14 @@ def execute_openai_request(request: Request, model: str, client: openai.Client) 
 
         ttft = first_token_time - start_time
         throughput = ntokens / (end_time - first_token_time)
-
-        # Record the latency
-        total_time = end_time - start_time  
-        output_file = os.path.join("outputs", "latency.txt")
-        with open(output_file, "a") as file:
-            file.write(f"Total time: {total_time:.6f} seconds\n")
+        latency = end_time - start_time  
 
         logger.debug(f"Response: {''.join(messages)}")
     except Exception as e:
         logger.error(f"OpenAI request failed: {e}")
         return -1, -1
 
-    return ttft, throughput
+    return ttft, throughput, latency
 
 def execute_openai_request_with_output(request: Request, model: str, client: openai.Client) -> Tuple[float, float, str]:
     """

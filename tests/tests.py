@@ -431,19 +431,23 @@ def test_lmcache_remote_disk(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd
     return final_result
 
 def test_lmcache_redis_sentinel(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
-    config1 = CreateSingleLocalBootstrapConfig(8000, 1, model, "configs/lmcache_redis_sentinel_cachegen.yaml")
+    # Set up the master node
+    os.environ["REDIS_SERVICE_NAME"] = "redismaster"
+
+    config1 = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_redis_sentinel_cachegen.yaml")
+    config2 = CreateSingleLocalBootstrapConfig(8001, 1, model, None)
 
     # Set vllm configuration for different models
     ModelConfig(model, config1)
+    ModelConfig(model, config2)
     
-    # Experiments: 8K, 16K, 24K shared context, each experiments has 5 queries
-    #lengths = [8192, 16384, 24576]
+    # Experiments: 10375 shared context, each experiments has 10 queries
     lengths = [10375]
     experiments = [CreateDummyExperiment(10, length) for length in lengths]
 
     test_case = TestCase(
             experiments = experiments,
-            engines = [config1])
+            engines = [config1, config2])
 
     # Run test case
     final_result = run_test_case(test_case)
