@@ -300,7 +300,7 @@ def test_lmcache_local_distributed(model = "mistralai/Mistral-7B-Instruct-v0.2",
 
 def test_lmcache_remote_cachegen(model = "mistralai/Mistral-7B-Instruct-v0.2", port1 = 8000, port2 = 8001) -> pd.DataFrame:
     """
-    This function is set with local cpu storage backend and cachegen for transmission 
+    This function is set with remote cpu storage backend and cachegen for transmission 
     by comparing scenarios whether retrieval is pipelined or not.
     """
     # Start two servers
@@ -325,7 +325,7 @@ def test_lmcache_remote_cachegen(model = "mistralai/Mistral-7B-Instruct-v0.2", p
 
 def test_lmcache_cachegen_distributed(model = "mistralai/Mistral-7B-Instruct-v0.2", port1 = 8000, port2 = 8001) -> pd.DataFrame:
     """
-    This function is set with local cpu storage backend and cachegen for transmission 
+    This function is set with remote cpu storage backend and cachegen for transmission 
     by enabling distributed cuda.
     """
     config = CreateSingleLocalBootstrapConfig(port1, 0, model, "configs/lmcache_remote_cachegen.yaml")
@@ -352,7 +352,7 @@ def test_lmcache_cachegen_distributed(model = "mistralai/Mistral-7B-Instruct-v0.
 
 def test_lmcache_remote_safetensor(model = "mistralai/Mistral-7B-Instruct-v0.2", port1 = 8000, port2 = 8001) -> pd.DataFrame:
     """
-    This function is set with local cpu storage backend and safetensor for transmission 
+    This function is set with remote cpu storage backend and safetensor for transmission 
     by comparing scenarios whether retrieval is pipelined or not.
     """
     # Start two servers: with lmcache and without lmcache
