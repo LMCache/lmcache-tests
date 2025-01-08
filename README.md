@@ -120,6 +120,7 @@ There are various test functions available that can be specified using -f / --fi
   * `test_chunk_prefill`: tests the performance of chunked prefill.
   * `test_cache_compatibility`: tests the compatibility of prefix caching between lmcache and vllm.
   * `test_lmcache_local_distributed`: tests the performance of tensor parallelism.
+  * `test_experimental`: tests the codes in `LMCache/lmcache/experimental/`.
 * Remote cpu storage backend
   * `test_lmcache_remote_cachegen`: compares scenarios whether retrieval is pipelined or not with cachegen for transmission.
   * `test_lmcache_cachegen_distributed`: tests the performance of tensor parallelism with cachegen for transmission.
