@@ -295,6 +295,7 @@ def test_lmcache_local_disk(model = "mistralai/Mistral-7B-Instruct-v0.2", port1 
     with open(yaml_config, 'r') as file:
         data = yaml.safe_load(file)
     local_device = data.get('local_device') + "*"
+    local_device = local_device.replace("file://", "")
     os.system(f"rm -rf {local_device}")
 
     return final_result
