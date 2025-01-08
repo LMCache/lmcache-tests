@@ -241,7 +241,7 @@ def test_lmcache_local_cpu(model = "mistralai/Mistral-7B-Instruct-v0.2", port1 =
     final_result = run_test_case(test_case)
     return final_result
 
-def test_experimental(model = "mistralai/Mistral-7B-Instruct-v0.2", port1 = 8000, port2 = 8001) -> pd.DataFrame:
+def test_lmcache_local_cpu_experimental(model = "mistralai/Mistral-7B-Instruct-v0.2", port1 = 8000, port2 = 8001) -> pd.DataFrame:
     """
     This function tests the experimental codes in LMCache.
     Expected behavior: reduces GPU memory overhead.
@@ -273,6 +273,40 @@ def test_lmcache_local_disk(model = "mistralai/Mistral-7B-Instruct-v0.2", port1 
     """
     # Start two servers: with lmcache and without lmcache
     yaml_config = "configs/lmcache_local_disk.yaml"
+    config1 = CreateSingleLocalBootstrapConfig(port1, 0, model, yaml_config)
+    config2 = CreateSingleLocalBootstrapConfig(port2, 1, model, None)
+
+    # Set vllm configuration for different models
+    ModelConfig(model, config1)
+    ModelConfig(model, config2)
+
+    # Experiments: 8K, 16K, 24K shared context, each experiments has 10 queries
+    lengths = [8192, 16384, 24576]
+    experiments = [CreateDummyExperiment(10, length) for length in lengths]
+
+    test_case = TestCase(
+            experiments = experiments,
+            engines = [config1, config2])
+
+    # Run test case
+    final_result = run_test_case(test_case)
+
+    # Clean up
+    with open(yaml_config, 'r') as file:
+        data = yaml.safe_load(file)
+    local_device = data.get('local_device') + "*"
+    local_device = local_device.replace("file://", "")
+    os.system(f"rm -rf {local_device}")
+
+    return final_result
+
+def test_lmcache_local_disk_experimental(model = "mistralai/Mistral-7B-Instruct-v0.2", port1 = 8000, port2 = 8001) -> pd.DataFrame: 
+    """
+    This function tests local disk storage backend by comparing scenarios with and without lmcache.
+    """
+    # Start two servers: with lmcache and without lmcache
+    os.environ["LMCACHE_USE_EXPERIMENTAL"] = "True"
+    yaml_config = "configs/lmcache_local_disk_exp.yaml"
     config1 = CreateSingleLocalBootstrapConfig(port1, 0, model, yaml_config)
     config2 = CreateSingleLocalBootstrapConfig(port2, 1, model, None)
 

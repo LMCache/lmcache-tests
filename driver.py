@@ -167,6 +167,19 @@ def create_openai_client(port: int, model) -> openai.Client:
         max_tokens = 1,
     )
 
+    messages = [{
+        "role": "user",
+        "content": f"This is a warm up request" * 201
+        }]
+
+    chat_completion = client.chat.completions.create(
+        messages = messages,
+        model = model,
+        temperature = 0,
+        stream = False,
+        max_tokens = 1,
+    )
+
     return client
 
 
