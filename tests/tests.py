@@ -241,7 +241,7 @@ def test_lmcache_local_cpu(model = "mistralai/Mistral-7B-Instruct-v0.2", port1 =
     final_result = run_test_case(test_case)
     return final_result
 
-def test_lmcache_local_cpu_experimental(model = "mistralai/Mistral-7B-Instruct-v0.2", port1 = 8000, port2 = 8001) -> pd.DataFrame:
+def test_local_cpu_experimental(model = "mistralai/Mistral-7B-Instruct-v0.2", port1 = 8000, port2 = 8001) -> pd.DataFrame:
     """
     This function tests the experimental codes in LMCache.
     Expected behavior: reduces GPU memory overhead.
@@ -300,7 +300,7 @@ def test_lmcache_local_disk(model = "mistralai/Mistral-7B-Instruct-v0.2", port1 
 
     return final_result
 
-def test_lmcache_local_disk_experimental(model = "mistralai/Mistral-7B-Instruct-v0.2", port1 = 8000, port2 = 8001) -> pd.DataFrame: 
+def test_local_disk_experimental(model = "mistralai/Mistral-7B-Instruct-v0.2", port1 = 8000, port2 = 8001) -> pd.DataFrame: 
     """
     This function tests local disk storage backend by comparing scenarios with and without lmcache.
     """
