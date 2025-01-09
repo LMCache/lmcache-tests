@@ -9,14 +9,14 @@ import pandas as pd
 from log import init_logger
 logger = init_logger(__name__)
 
-def wrapped_test_runner(test_func, model, output_file):
+def wrapped_test_runner(test_func, model, output_file, port1, port2):
     """
     Run the test case and save results to output file
     """
     if model is None:
-        output_df = test_func()
+        output_df = test_func(port1=port1, port2=port2)
     else:
-        output_df = test_func(model)
+        output_df = test_func(model=model, port1=port1, port2=port2)
     if isinstance(output_df, pd.DataFrame):
         output_df.to_csv(output_file, index=False)
         logger.info("Saving output to " + output_file)
@@ -33,6 +33,13 @@ def main():
     parser.add_argument("-l", "--list", help="List all functions in the module without executing them.", action="store_true")
     parser.add_argument("-o", "--output-dir", help="The directory to put the output file.", default="outputs/")
     parser.add_argument("-m", "--model", help="The models of vllm for every functions.", default=None)
+    parser.add_argument(
+        "-p", "--ports", 
+        help="Two ports required for the experiment.", 
+        type=int, 
+        nargs=2, 
+        default=[8000, 8001]
+    )
     args = parser.parse_args()
 
     if not os.path.exists(args.output_dir):
@@ -80,15 +87,18 @@ def main():
             print(name)
         sys.exit(0)
 
+    # Set the ports for the experiment
+    port1, port2 = args.ports
+
     if args.model is None:
         for func, name in zip(function_list, function_names):
             logger.info("Executing function: " + name)
-            wrapped_test_runner(func, None, f"{args.output_dir}{name}.csv")
+            wrapped_test_runner(func, None, f"{args.output_dir}{name}.csv", port1, port2)
     else:
         model_prefix = args.model.split('/')[0]
         for func, name in zip(function_list, function_names):
             logger.info("Executing function: " + name)
-            wrapped_test_runner(func, args.model, f"{args.output_dir}{name}_{model_prefix}.csv")
+            wrapped_test_runner(func, args.model, f"{args.output_dir}{name}_{model_prefix}.csv", port1, port2)
     
 if __name__ == "__main__":
     main()

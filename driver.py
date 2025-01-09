@@ -167,6 +167,19 @@ def create_openai_client(port: int, model) -> openai.Client:
         max_tokens = 1,
     )
 
+    messages = [{
+        "role": "user",
+        "content": f"This is a warm up request" * 201
+        }]
+
+    chat_completion = client.chat.completions.create(
+        messages = messages,
+        model = model,
+        temperature = 0,
+        stream = False,
+        max_tokens = 1,
+    )
+
     return client
 
 
@@ -217,7 +230,7 @@ def execute_openai_request(request: Request, model: str, client: openai.Client) 
         logger.debug(f"Response: {''.join(messages)}")
     except Exception as e:
         logger.error(f"OpenAI request failed: {e}")
-        return -1, -1
+        return -1, -1, -1
 
     return ttft, throughput, latency
 
@@ -273,7 +286,7 @@ def execute_openai_request_with_output(request: Request, model: str, client: ope
         logger.debug(f"Response: {''.join(messages)}")
     except Exception as e:
         logger.error(f"OpenAI request failed: {e}")
-        return -1, -1
+        return -1, -1, ""
 
     return ttft, throughput, f"{''.join(messages)}"
 

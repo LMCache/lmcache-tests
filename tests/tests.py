@@ -94,14 +94,14 @@ def offline_test(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
     run_command("python3 tests/offline_test.py", None, stderr_log, detach=False)
     return None
 
-def test_cache_compatibility(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
+def test_cache_compatibility(model = "mistralai/Mistral-7B-Instruct-v0.2", port1 = 8000, port2 = 8001) -> pd.DataFrame:
     """
     This function tests the compatibility of prefix caching between lmcache and vllm 
     by comparing performance across enabling prefix caching or not.
     """
     # Start two servers with lmcache enabling prefix caching
-    config1 = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_local_cpu.yaml")
-    config2 = CreateSingleLocalBootstrapConfig(8001, 1, model, "configs/lmcache_local_cpu.yaml")
+    config1 = CreateSingleLocalBootstrapConfig(port1, 0, model, "configs/lmcache_local_cpu.yaml")
+    config2 = CreateSingleLocalBootstrapConfig(port2, 1, model, "configs/lmcache_local_cpu.yaml")
     config1.vllm_optional_config["enable_prefix_caching"] = ""
 
     # Set vllm configuration for different models
@@ -120,13 +120,13 @@ def test_cache_compatibility(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd
     final_result = run_test_case(test_case)
     return final_result
 
-def test_chunk_prefill(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
+def test_chunk_prefill(model = "mistralai/Mistral-7B-Instruct-v0.2", port1 = 8000, port2 = 8001) -> pd.DataFrame:
     """
     This function tests the performance of chunked prefill by comparing scenarios with and without lmcache.
     """
     # Start two servers: with lmcache and without lmcache
-    config1 = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_local_cpu.yaml")
-    config2 = CreateSingleLocalBootstrapConfig(8001, 1, model, None)
+    config1 = CreateSingleLocalBootstrapConfig(port1, 0, model, "configs/lmcache_local_cpu.yaml")
+    config2 = CreateSingleLocalBootstrapConfig(port2, 1, model, None)
     config1.vllm_optional_config["enable_chunked_prefill"] = True
     config2.vllm_optional_config["enable_chunked_prefill"] = True
 
@@ -146,12 +146,12 @@ def test_chunk_prefill(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataF
     final_result = run_test_case(test_case)
     return final_result
 
-def test_vary_length_workload(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
+def test_vary_length_workload(model = "mistralai/Mistral-7B-Instruct-v0.2", port1 = 8000, port2 = 8001) -> pd.DataFrame:
     """
     This function tests the performance of partial prefill by changing the workload length of different requests.
     """
     # Start one server with lmcache
-    config = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_local_cpu.yaml")
+    config = CreateSingleLocalBootstrapConfig(port1, 0, model, "configs/lmcache_local_cpu.yaml")
 
     # Set vllm configuration for different models
     ModelConfig(model, config)
@@ -168,14 +168,14 @@ def test_vary_length_workload(model = "mistralai/Mistral-7B-Instruct-v0.2") -> p
     final_result = run_test_case(test_case)
     return final_result
 
-def test_multi_turn(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
+def test_multi_turn(model = "mistralai/Mistral-7B-Instruct-v0.2", port1 = 8000, port2 = 8001) -> pd.DataFrame:
     """
     This function tests the performance of saving decode KV Cache with a multi-turn conversation
     by comparing performance with and without lmcache.
     """
     # Start one server: with lmcache; for contrast (not saving decode KV Cache), change save_decode_cache to false
-    config1 = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_local_cpu.yaml")
-    config2 = CreateSingleLocalBootstrapConfig(8001, 1, model, "configs/lmcache_local_cpu_multi.yaml")
+    config1 = CreateSingleLocalBootstrapConfig(port1, 0, model, "configs/lmcache_local_cpu.yaml")
+    config2 = CreateSingleLocalBootstrapConfig(port2, 1, model, "configs/lmcache_local_cpu_multi.yaml")
 
     # Set vllm configuration for different models
     ModelConfig(model, config1)
@@ -193,13 +193,13 @@ def test_multi_turn(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFram
     final_result = run_test_case(test_case)
     return final_result
 
-def test_lmcache_local_gpu(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
+def test_lmcache_local_gpu(model = "mistralai/Mistral-7B-Instruct-v0.2", port1 = 8000, port2 = 8001) -> pd.DataFrame:
     """
     This function tests local gpu storage backend by comparing scenarios with and without lmcache.
     """
     # Start two servers: with lmcache and without lmcache
-    config1 = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_local_gpu.yaml")
-    config2 = CreateSingleLocalBootstrapConfig(8001, 1, model, None)
+    config1 = CreateSingleLocalBootstrapConfig(port1, 0, model, "configs/lmcache_local_gpu.yaml")
+    config2 = CreateSingleLocalBootstrapConfig(port2, 1, model, None)
 
     # Set vllm configuration for different models
     ModelConfig(model, config1)
@@ -217,13 +217,13 @@ def test_lmcache_local_gpu(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.D
     final_result = run_test_case(test_case)
     return final_result
 
-def test_lmcache_local_cpu(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
+def test_lmcache_local_cpu(model = "mistralai/Mistral-7B-Instruct-v0.2", port1 = 8000, port2 = 8001) -> pd.DataFrame:
     """
     This function tests local cpu storage backend by comparing scenarios with and without lmcache.
     """
     # Start two servers: with lmcache and without lmcache
-    config1 = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_local_cpu.yaml")
-    config2 = CreateSingleLocalBootstrapConfig(8001, 1, model, None)
+    config1 = CreateSingleLocalBootstrapConfig(port1, 0, model, "configs/lmcache_local_cpu.yaml")
+    config2 = CreateSingleLocalBootstrapConfig(port2, 1, model, None)
 
     # Set vllm configuration for different models
     ModelConfig(model, config1)
@@ -241,14 +241,40 @@ def test_lmcache_local_cpu(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.D
     final_result = run_test_case(test_case)
     return final_result
 
-def test_lmcache_local_disk(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame: 
+def test_local_cpu_experimental(model = "mistralai/Mistral-7B-Instruct-v0.2", port1 = 8000, port2 = 8001) -> pd.DataFrame:
+    """
+    This function tests the experimental codes in LMCache.
+    Expected behavior: reduces GPU memory overhead.
+    """
+    # Start two servers: with lmcache and without lmcache
+    os.environ["LMCACHE_USE_EXPERIMENTAL"] = "True"
+    config1 = CreateSingleLocalBootstrapConfig(port1, 0, model, "configs/experimental.yaml")
+    config2 = CreateSingleLocalBootstrapConfig(port2, 1, model, None)
+
+    # Set vllm configuration for different models
+    ModelConfig(model, config1)
+    ModelConfig(model, config2)
+
+    # Experiments: 8K, 16K, 24K shared context, each experiments has 10 queries
+    lengths = [8192, 16384, 24576]
+    experiments = [CreateDummyExperiment(10, length ) for length in lengths]
+
+    test_case = TestCase(
+            experiments = experiments,
+            engines = [config1, config2])
+
+    # Run test case
+    final_result = run_test_case(test_case)
+    return final_result
+
+def test_lmcache_local_disk(model = "mistralai/Mistral-7B-Instruct-v0.2", port1 = 8000, port2 = 8001) -> pd.DataFrame: 
     """
     This function tests local disk storage backend by comparing scenarios with and without lmcache.
     """
     # Start two servers: with lmcache and without lmcache
     yaml_config = "configs/lmcache_local_disk.yaml"
-    config1 = CreateSingleLocalBootstrapConfig(8000, 0, model, yaml_config)
-    config2 = CreateSingleLocalBootstrapConfig(8001, 1, model, None)
+    config1 = CreateSingleLocalBootstrapConfig(port1, 0, model, yaml_config)
+    config2 = CreateSingleLocalBootstrapConfig(port2, 1, model, None)
 
     # Set vllm configuration for different models
     ModelConfig(model, config1)
@@ -269,15 +295,50 @@ def test_lmcache_local_disk(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.
     with open(yaml_config, 'r') as file:
         data = yaml.safe_load(file)
     local_device = data.get('local_device') + "*"
+    local_device = local_device.replace("file://", "")
     os.system(f"rm -rf {local_device}")
 
     return final_result
 
-def test_lmcache_local_distributed(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame: 
+def test_local_disk_experimental(model = "mistralai/Mistral-7B-Instruct-v0.2", port1 = 8000, port2 = 8001) -> pd.DataFrame: 
+    """
+    This function tests local disk storage backend by comparing scenarios with and without lmcache.
+    """
+    # Start two servers: with lmcache and without lmcache
+    os.environ["LMCACHE_USE_EXPERIMENTAL"] = "True"
+    yaml_config = "configs/lmcache_local_disk_exp.yaml"
+    config1 = CreateSingleLocalBootstrapConfig(port1, 0, model, yaml_config)
+    config2 = CreateSingleLocalBootstrapConfig(port2, 1, model, None)
+
+    # Set vllm configuration for different models
+    ModelConfig(model, config1)
+    ModelConfig(model, config2)
+
+    # Experiments: 8K, 16K, 24K shared context, each experiments has 10 queries
+    lengths = [8192, 16384, 24576]
+    experiments = [CreateDummyExperiment(10, length) for length in lengths]
+
+    test_case = TestCase(
+            experiments = experiments,
+            engines = [config1, config2])
+
+    # Run test case
+    final_result = run_test_case(test_case)
+
+    # Clean up
+    with open(yaml_config, 'r') as file:
+        data = yaml.safe_load(file)
+    local_device = data.get('local_disk') + "*"
+    local_device = local_device.replace("file://", "")
+    os.system(f"rm -rf {local_device}")
+
+    return final_result
+
+def test_lmcache_local_distributed(model = "mistralai/Mistral-7B-Instruct-v0.2", port1 = 8000, port2 = 8001) -> pd.DataFrame: 
     """
     Local CPU + TP = 2
     """
-    config = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_local_cpu.yaml")
+    config = CreateSingleLocalBootstrapConfig(port1, 0, model, "configs/lmcache_local_cpu.yaml")
 
     config.vllm_config.tensor_parallel_size = 2
     config.vllm_config.gpu_memory_utilization = 0.6
@@ -298,14 +359,14 @@ def test_lmcache_local_distributed(model = "mistralai/Mistral-7B-Instruct-v0.2")
     final_result = run_test_case(test_case)
     return final_result
 
-def test_lmcache_remote_cachegen(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
+def test_lmcache_remote_cachegen(model = "mistralai/Mistral-7B-Instruct-v0.2", port1 = 8000, port2 = 8001) -> pd.DataFrame:
     """
-    This function is set with local cpu storage backend and cachegen for transmission 
+    This function is set with remote cpu storage backend and cachegen for transmission 
     by comparing scenarios whether retrieval is pipelined or not.
     """
     # Start two servers
-    config1 = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_remote_cachegen.yaml")
-    config2 = CreateSingleLocalBootstrapConfig(8001, 1, model, "configs/lmcache_remote_cachegen_pipeline.yaml")
+    config1 = CreateSingleLocalBootstrapConfig(port1, 0, model, "configs/lmcache_remote_cachegen.yaml")
+    config2 = CreateSingleLocalBootstrapConfig(port2, 1, model, "configs/lmcache_remote_cachegen_pipeline.yaml")
 
     # Set vllm configuration for different models
     ModelConfig(model, config1)
@@ -323,12 +384,12 @@ def test_lmcache_remote_cachegen(model = "mistralai/Mistral-7B-Instruct-v0.2") -
     final_result = run_test_case(test_case)
     return final_result
 
-def test_lmcache_cachegen_distributed(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
+def test_lmcache_cachegen_distributed(model = "mistralai/Mistral-7B-Instruct-v0.2", port1 = 8000, port2 = 8001) -> pd.DataFrame:
     """
-    This function is set with local cpu storage backend and cachegen for transmission 
+    This function is set with remote cpu storage backend and cachegen for transmission 
     by enabling distributed cuda.
     """
-    config = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_remote_cachegen.yaml")
+    config = CreateSingleLocalBootstrapConfig(port1, 0, model, "configs/lmcache_remote_cachegen.yaml")
     #config = CreateSingleLocalBootstrapConfig(8000, 0, "facebook/opt-125m", "configs/lmcache_remote_cachegen.yaml")
 
     config.vllm_config.tensor_parallel_size = 2
@@ -350,14 +411,14 @@ def test_lmcache_cachegen_distributed(model = "mistralai/Mistral-7B-Instruct-v0.
     final_result = run_test_case(test_case)
     return final_result
 
-def test_lmcache_remote_safetensor(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
+def test_lmcache_remote_safetensor(model = "mistralai/Mistral-7B-Instruct-v0.2", port1 = 8000, port2 = 8001) -> pd.DataFrame:
     """
-    This function is set with local cpu storage backend and safetensor for transmission 
+    This function is set with remote cpu storage backend and safetensor for transmission 
     by comparing scenarios whether retrieval is pipelined or not.
     """
     # Start two servers: with lmcache and without lmcache
-    config1 = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_remote_safetensor.yaml")
-    config2 = CreateSingleLocalBootstrapConfig(8001, 1, model, "configs/lmcache_remote_safetensor_pipeline.yaml")
+    config1 = CreateSingleLocalBootstrapConfig(port1, 0, model, "configs/lmcache_remote_safetensor.yaml")
+    config2 = CreateSingleLocalBootstrapConfig(port2, 1, model, "configs/lmcache_remote_safetensor_pipeline.yaml")
 
     # Set vllm configuration for different models
     ModelConfig(model, config1)
@@ -375,11 +436,11 @@ def test_lmcache_remote_safetensor(model = "mistralai/Mistral-7B-Instruct-v0.2")
     final_result = run_test_case(test_case)
     return final_result
 
-def test_lmcache_safetensor_distributed(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
+def test_lmcache_safetensor_distributed(model = "mistralai/Mistral-7B-Instruct-v0.2", port1 = 8000, port2 = 8001) -> pd.DataFrame:
     """
     LMCache remote safetensor + TP = 2
     """
-    config = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_remote_safetensor.yaml")
+    config = CreateSingleLocalBootstrapConfig(port1, 0, model, "configs/lmcache_remote_safetensor.yaml")
 
     config.vllm_config.tensor_parallel_size = 2
     config.vllm_config.gpu_memory_utilization = 0.6
@@ -400,13 +461,13 @@ def test_lmcache_safetensor_distributed(model = "mistralai/Mistral-7B-Instruct-v
     final_result = run_test_case(test_case)
     return final_result
 
-def test_lmcache_remote_disk(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
+def test_lmcache_remote_disk(model = "mistralai/Mistral-7B-Instruct-v0.2", port1 = 8000, port2 = 8001) -> pd.DataFrame:
     """
     This function tests remote disk storage backend by comparing scenarios with and without lmcache.
     """
     # Start two servers: with lmcache and without lmcache
-    config1 = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_remote_cachegen.yaml")
-    config2 = CreateSingleLocalBootstrapConfig(8001, 1, model, None)
+    config1 = CreateSingleLocalBootstrapConfig(port1, 0, model, "configs/lmcache_remote_cachegen.yaml")
+    config2 = CreateSingleLocalBootstrapConfig(port2, 1, model, None)
 
     config1.lmcache_config.remote_device = "/local/end-to-end-tests/lmcache-server/"
 
@@ -430,12 +491,12 @@ def test_lmcache_remote_disk(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd
 
     return final_result
 
-def test_lmcache_redis_sentinel(model = "mistralai/Mistral-7B-Instruct-v0.2") -> pd.DataFrame:
+def test_lmcache_redis_sentinel(model = "mistralai/Mistral-7B-Instruct-v0.2", port1 = 8000, port2 = 8001) -> pd.DataFrame:
     # Set up the master node
     os.environ["REDIS_SERVICE_NAME"] = "redismaster"
 
-    config1 = CreateSingleLocalBootstrapConfig(8000, 0, model, "configs/lmcache_redis_sentinel_cachegen.yaml")
-    config2 = CreateSingleLocalBootstrapConfig(8001, 1, model, None)
+    config1 = CreateSingleLocalBootstrapConfig(port1, 0, model, "configs/lmcache_redis_sentinel_cachegen.yaml")
+    config2 = CreateSingleLocalBootstrapConfig(port2, 1, model, None)
 
     # Set vllm configuration for different models
     ModelConfig(model, config1)
@@ -453,7 +514,7 @@ def test_lmcache_redis_sentinel(model = "mistralai/Mistral-7B-Instruct-v0.2") ->
     final_result = run_test_case(test_case)
     return final_result
 
-def dumb_test() -> None:
+def dumb_test(model = "mistralai/Mistral-7B-Instruct-v0.2", port1 = 8000, port2 = 8001) -> None:
     print("This is a dumb_test") 
 
 if __name__ == "__main__":

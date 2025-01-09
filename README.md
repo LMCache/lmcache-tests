@@ -48,12 +48,12 @@ You can also monitor the following files to check the status of the bootstrapped
 
 For stderr:
 ```bash
-tail -f /tmp/8000-stderr.log
+tail -f /tmp/{user_name}-8000-stderr.log
 ```
 
 For stdout:
 ```bash
-tail -f /tmp/8000-stdout.log
+tail -f /tmp/{user_name}-8000-stdout.log
 ```
 
 
@@ -61,22 +61,20 @@ tail -f /tmp/8000-stdout.log
 
 `main.py` is the entrypoint to execute the test functions:
 ```
-usage: main.py [-h] [-f FILTER] [-l] [-o OUTPUT_DIR] [-m MODEL] filepath
+usage: main.py [-h] [-f FILTER] [-l] [-o OUTPUT_DIR] [-m MODEL] [-p PORT1 PORT2] filepath
 
 Execute all functions in a given Python file.
 
 positional arguments:
-  filepath              The Python file to execute functions from (include subfolders if any).
+  filepath                                  The Python file to execute functions from (include subfolders if any).
 
 options:
-  -h, --help            show this help message and exit
-  -f FILTER, --filter FILTER
-                        Pattern to filter which functions to execute.
-  -l, --list            List all functions in the module without executing them.
-  -o OUTPUT_DIR, --output-dir OUTPUT_DIR
-                        The directory to put the output file.
-  -m MODEL, --model MODEL           
-                        The models of vllm for every functions.
+  -h, --help                                show this help message and exit
+  -f FILTER, --filter FILTER                Pattern to filter which functions to execute.
+  -l, --list                                List all functions in the module without executing them.
+  -o OUTPUT_DIR, --output-dir OUTPUT_DIR    The directory to put the output file.
+  -m MODEL, --model MODEL                   The models of vllm for every functions.
+  -p PORT1 PORT2, --ports PORT1 PORT2       Two ports required for the experiment.
 ```
 
 Here are some examples:
@@ -105,16 +103,41 @@ There should be multiple columns in the CSV:
 - `request_id`: the id of the request in the workload
 - `TTFT`: the time-to-first-token of this request
 - `throughput`: the number of output tokens per second of this request
+- `latency`: the time the whole response completes
 - `context_len`: the context length of this request
 - `query_len`: the query length of this request
 - `gpu_memory`: the gpu memory used before this experiment is finished
 
 Some example codes of how to parse the output CSV can be found in `outputs/process_result.py`.
 
+## 3. An explanation of the current tests
+There are various test functions available that can be specified using -f / --filter. These functions serve the following purposes:
 
-## 3. Contributing guide: understanding the code
+* Local cpu storage backend
+  * `test_lmcache_local_cpu`: compares scenarios with and without lmcache.
+  * `test_multi_turn`: tests the performance of saving decode KV Cache with a multi-turn conversation.
+  * `test_vary_length_workload`: tests the performance of partial prefill by changing the workload length of different requests.
+  * `test_chunk_prefill`: tests the performance of chunked prefill.
+  * `test_cache_compatibility`: tests the compatibility of prefix caching between lmcache and vllm.
+  * `test_lmcache_local_distributed`: tests the performance of tensor parallelism.
+  * `test_local_cpu_experimental`: tests the codes in `LMCache/lmcache/experimental/`.
+* Remote cpu storage backend
+  * `test_lmcache_remote_cachegen`: compares scenarios whether retrieval is pipelined or not with cachegen for transmission.
+  * `test_lmcache_cachegen_distributed`: tests the performance of tensor parallelism with cachegen for transmission.
+  * `test_lmcache_remote_safetensor`: compares scenarios whether retrieval is pipelined or not with safetensor for transmission.
+  * `test_lmcache_safetensor_distributed`: tests the performance of tensor parallelism with safetensor for transmission.
+* Other storage backend
+  * `test_lmcache_local_gpu`: local gpu storage backend.
+  * `test_lmcache_local_disk`: local disk storage backend.
+  * `test_local_disk_experimental`: tests the codes in `LMCache/lmcache/experimental/` with local disk storage backend.
+  * `test_lmcache_remote_disk`: remote disk storage backend.
+  * `test_lmcache_redis_sentinel`: Redis instance storage backend. 
+* Offline tests
+  * `offline_test`: tests partial prefll and full prefill in a single batch.
 
-### 3.1 Basic terminology
+## 4. Contributing guide: understanding the code
+
+### 4.1 Basic terminology
 
 - **`Request`**: A request is a single prompt containing some context and a user query.
 - **`Engine`**: Means "serving engine". An engine is an LLM serving engine process that can process requests through the OpenAI API interface.
@@ -123,7 +146,7 @@ Some example codes of how to parse the output CSV can be found in `outputs/proce
 - **`Test case`**: A test case contains a list of experiments. The goal is to compare the performance of different engines under different workloads. 
 - **`Test function`**: A test function wraps the test cases and saves the output CSV. In most cases, a single test function only contains one test case. Different test functions aim to test different functionalities of the system.
 
-### 3.2 Main components
+### 4.2 Main components
 
 **Test case configuration**:
 
@@ -171,6 +194,6 @@ The experiment runner takes in _one_ workload config and $N$ engine configs as i
 
 The code can be found in [driver.py](https://github.com/LMCache/lmcache-tests/blob/main/driver.py)
 
-## 4. Contributing guide: adding new tests
+## 5. Contributing guide: adding new tests
 
 (WIP)
