@@ -19,7 +19,7 @@ if [[ ! "$python_version" =~ ^\(3,\ 1[0-9]\) ]]; then
 fi
 
 # Step 1: clone the code
-pip install vllm==0.6.1.post2
+pip install vllm==0.6.2.3
 git clone https://github.com/LMCache/LMCache.git ../LMCache
 git clone https://github.com/LMCache/lmcache-vllm.git ../lmcache-vllm
 
