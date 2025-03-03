@@ -225,18 +225,12 @@ class LocalVllmBootstrapper(Bootstrapper):
         extra_args = "--trust-remote-code"
         if self.config.lmcache_config.cmdargs() == " ":
             os.environ["LMCACHE_CONFIG_FILE"]=self.config.lmcache_config.config_path
-            #print(f"\033[32mLaunching Engine with Command :\033[0m LMCACHE_CONFIG_FILE={self.config.lmcache_config.config_path}  lmcache_vllm serve {self.config.vllm_config.cmdargs()} {self.config.vllm_optional_config.cmdargs()} {extra_args}")
-            #return f"lmcache_vllm serve {self.config.vllm_config.cmdargs()} {self.config.vllm_optional_config.cmdargs()} {extra_args}"
-            # FIXME(Jiayi): using `serve` command cannot activate lmcache
-            # using `entrypoints` for now
-            print(f"\033[32mLaunching Engine with Command :\033[0m LMCACHE_CONFIG_FILE={self.config.lmcache_config.config_path}  python3 -m lmcache_vllm.vllm.entrypoints.openai.api_server --model {self.config.vllm_config.cmdargs()} {self.config.vllm_optional_config.cmdargs()} {extra_args}")
-            return f"python3 -m lmcache_vllm.vllm.entrypoints.openai.api_server --model {self.config.vllm_config.cmdargs()} {self.config.vllm_optional_config.cmdargs()} {extra_args}"
+            ktc = '{"kv_connector":"LMCacheConnector", "kv_role":"kv_both"}'
+            print(f"\033[32mLaunching Engine with Command :\033[0m LMCACHE_CONFIG_FILE={self.config.lmcache_config.config_path} vllm serve {self.config.vllm_config.cmdargs()} {self.config.vllm_optional_config.cmdargs()} {extra_args} --kv-transfer-config \'{ktc}\'")
+            return f"vllm serve {self.config.vllm_config.cmdargs()} {self.config.vllm_optional_config.cmdargs()} {extra_args} --kv-transfer-config \'{ktc}\'"
         else:
             print(f"\033[32mLaunching Engine with Command :\033[0m vllm serve {self.config.vllm_config.cmdargs()} {self.config.vllm_optional_config.cmdargs()} {extra_args}")
             return f"vllm serve {self.config.vllm_config.cmdargs()} {self.config.vllm_optional_config.cmdargs()} {extra_args}"
-
-
-        # return f"python3 -m vllm.entrypoints.openai.api_server {self.config.vllm_config.cmdargs()} {self.config.vllm_optional_config.cmdargs()} {self.config.lmcache_config.cmdargs()} {extra_args}"
 
     def start(self):
         self.lmcache_server_handler.start()
@@ -256,7 +250,7 @@ class LocalVllmBootstrapper(Bootstrapper):
         if not os.path.exists(self.stdout_log):
             return False
 
-        return self._monitor_file_output([self.stdout_log, self.stderr_log], "Uvicorn running on http", timeout=timeout)
+        return self._monitor_file_output([self.stdout_log, self.stderr_log], "Application startup complete.", timeout=timeout)
 
 
     def is_healthy(self) -> bool:
