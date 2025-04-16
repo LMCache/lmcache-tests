@@ -229,6 +229,7 @@ class LocalVllmBootstrapper(Bootstrapper):
             print(f"\033[32mLaunching Engine with Command :\033[0m LMCACHE_CONFIG_FILE={self.config.lmcache_config.config_path} vllm serve {self.config.vllm_config.cmdargs()} {self.config.vllm_optional_config.cmdargs()} {extra_args} --kv-transfer-config \'{ktc}\'")
             return f"vllm serve {self.config.vllm_config.cmdargs()} {self.config.vllm_optional_config.cmdargs()} {extra_args} --kv-transfer-config \'{ktc}\'"
         else:
+            os.environ["VLLM_USE_V1"]="0"
             print(f"\033[32mLaunching Engine with Command :\033[0m vllm serve {self.config.vllm_config.cmdargs()} {self.config.vllm_optional_config.cmdargs()} {extra_args}")
             return f"vllm serve {self.config.vllm_config.cmdargs()} {self.config.vllm_optional_config.cmdargs()} {extra_args}"
 
