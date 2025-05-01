@@ -224,8 +224,10 @@ class LocalVllmBootstrapper(Bootstrapper):
     def get_cmdline(self) -> str:
         extra_args = "--trust-remote-code"
         if self.config.lmcache_config.cmdargs() == " ":
+            os.environ["VLLM_ENABLE_V1_MULTIPROCESSING"]="1"
+            os.environ["VLLM_WORKER_MULTIPROC_METHOD"]="spawn"
             os.environ["LMCACHE_CONFIG_FILE"]=self.config.lmcache_config.config_path
-            ktc = '{"kv_connector":"LMCacheConnector", "kv_role":"kv_both"}'
+            ktc = '{"kv_connector":"LMCacheConnectorV1", "kv_role":"kv_both", "kv_connector_extra_config": {"lmcache_rpc_port": "7"}}'
             print(f"\033[32mLaunching Engine with Command :\033[0m LMCACHE_CONFIG_FILE={self.config.lmcache_config.config_path} vllm serve {self.config.vllm_config.cmdargs()} {self.config.vllm_optional_config.cmdargs()} {extra_args} --kv-transfer-config \'{ktc}\'")
             return f"vllm serve {self.config.vllm_config.cmdargs()} {self.config.vllm_optional_config.cmdargs()} {extra_args} --kv-transfer-config \'{ktc}\'"
         else:
