@@ -119,14 +119,14 @@ class VLLMOptionalConfig(Config):
 
 class EngineType(Enum):
     """
-    What kind of engine will be bootstraped
+    What kind of engine will be bootstrapped
     """
     LOCAL = 1
     DOCKER = 2
 
 @dataclass
 class BootstrapConfig:
-    # What kind of engine will be bootstraped
+    # What kind of engine will be bootstrapped
     # TODO: this should be in the test case specification
     engine_type: EngineType
 
